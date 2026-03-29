@@ -1,11 +1,12 @@
 package main
 
 import (
-	"backend/internal/auth/login"    // import โฟลเดอร์ใหม่
-	"backend/internal/auth/register" // import โฟลเดอร์ใหม่
+	"backend/internal/auth/login"
+	"backend/internal/auth/register"
 	"backend/internal/database"
+	"backend/internal/iot/device" // เพิ่ม
+	"backend/internal/iot/group"  // เพิ่ม
 	"backend/internal/middleware"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,11 +17,12 @@ func main() {
 		panic("เชื่อมต่อ Database ไม่ได้ค่ะเซนเซย์!: " + err.Error())
 	}
 
-	regService := register.NewService(db)
-	regHandler := register.NewHandler(regService)
+	// Setup Services & Handlers
+	regHandler := register.NewHandler(register.NewService(db))
+	loginHandler := login.NewHandler(login.NewService(db))
 
-	loginService := login.NewService(db)
-	loginHandler := login.NewHandler(loginService)
+	grpHandler := group.NewHandler(group.NewService(db))   // เพิ่ม
+	devHandler := device.NewHandler(device.NewService(db)) // เพิ่ม
 
 	r := gin.Default()
 
@@ -29,17 +31,18 @@ func main() {
 		v1.POST("/register", regHandler.Handle)
 		v1.POST("/login", loginHandler.Handle)
 
-		// *** ต้องมีส่วนนี้ด้วยนะคะเซนเซย์! ***
-		protected := v1.Group("/user").Use(middleware.AuthMiddleware())
+		// กลุ่ม API ที่ต้อง Login (ตรวจบัตรผ่าน)
+		protected := v1.Group("/iot").Use(middleware.AuthMiddleware())
 		{
-			protected.GET("/profile", func(c *gin.Context) {
-				userID, _ := c.Get("user_id")
-				c.JSON(http.StatusOK, gin.H{
-					"message": "ยินดีต้อนรับเข้าสู่ห้องส่วนตัวค่ะเซนเซย์!",
-					"your_id": userID,
-				})
-			})
+			// จัดการสถานที่
+			protected.POST("/groups", grpHandler.Create)
+
+			// จัดการอุปกรณ์
+			protected.POST("/devices", devHandler.Register)
 		}
+
+		// API สำหรับตัว Device ส่งข้อมูล (ยังไม่ล็อกกุญแจเพื่อให้ Sensor ส่งง่ายค่ะ)
+		v1.POST("/events", devHandler.ReceiveEvent)
 	}
 
 	r.Run(":8080")

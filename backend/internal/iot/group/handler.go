@@ -1,0 +1,49 @@
+package group
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type Handler struct {
+	service *Service
+}
+
+func NewHandler(s *Service) *Handler {
+	return &Handler{service: s}
+}
+func (h *Handler) Create(c *gin.Context) {
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ชื่อกลุ่มห้ามว่างนะคะเซนเซย์!"})
+		return
+	}
+
+	// แก้ไขการดึง userID ตรงนี้ค่ะ
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "ไม่พบข้อมูลผู้ใช้งาน"})
+		return
+	}
+
+	// แปลงจาก interface{} (ที่อาจเป็น float64) มาเป็น uint อย่างปลอดภัย
+	var userID uint
+	switch v := val.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ประเภทข้อมูล UserID ไม่ถูกต้อง"})
+		return
+	}
+
+	if err := h.service.Create(input.Name, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้างกลุ่มไม่สำเร็จค่ะ: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว! ✨"})
+}
