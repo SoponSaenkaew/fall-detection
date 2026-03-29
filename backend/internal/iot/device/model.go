@@ -14,7 +14,7 @@ type Device struct {
 
 type DeviceEvent struct {
 	gorm.Model
-	DeviceID string `gorm:"index;not null" json:"device_id"`
+	DeviceID uint   `gorm:"index;not null" json:"device_id"`
 	Type     string `gorm:"index;not null" json:"type"` // "event" หรือ "status"
 	Name     string `gorm:"index;not null" json:"name"` // "fall", "enter", "exit", "online"
 	Value    string `json:"value"`                      // ค่าที่ส่งมา (ถ้ามี)
