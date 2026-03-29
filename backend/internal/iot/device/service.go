@@ -46,3 +46,15 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	}
 	return nil
 }
+
+// เพิ่มใน internal/iot/device/service.go
+
+func (s *Service) CreateNotificationConfig(config iot.NotificationConfig) error {
+	return s.db.Create(&config).Error
+}
+
+func (s *Service) GetNotificationConfigs(groupID uint) ([]iot.NotificationConfig, error) {
+	var configs []iot.NotificationConfig
+	err := s.db.Where("group_id = ?", groupID).Find(&configs).Error
+	return configs, err
+}

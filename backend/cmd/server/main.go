@@ -39,6 +39,17 @@ func main() {
 
 			// จัดการอุปกรณ์
 			protected.POST("/devices", devHandler.Register)
+
+			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
+			protected.POST("/notifications", devHandler.AddNotificationConfig)
+
+			protected.GET("/profile", func(c *gin.Context) {
+				userID, _ := c.Get("user_id")
+				c.JSON(200, gin.H{
+					"message": "ยินดีต้อนรับเข้าสู่ห้องส่วนตัวค่ะเซนเซย์!",
+					"your_id": userID,
+				})
+			})
 		}
 
 		// API สำหรับตัว Device ส่งข้อมูล (ยังไม่ล็อกกุญแจเพื่อให้ Sensor ส่งง่ายค่ะ)
