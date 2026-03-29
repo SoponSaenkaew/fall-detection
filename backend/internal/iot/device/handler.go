@@ -1,0 +1,59 @@
+package device
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type Handler struct {
+	service *Service
+}
+
+func NewHandler(s *Service) *Handler {
+	return &Handler{service: s}
+}
+
+// ลงทะเบียนอุปกรณ์เข้ากับกลุ่ม (ใช้โดย User)
+func (h *Handler) Register(c *gin.Context) {
+	var input struct {
+		GroupID  uint   `json:"group_id" binding:"required"`
+		DeviceID string `json:"device_id" binding:"required"`
+		Name     string `json:"name" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลอุปกรณ์ไม่ครบค่ะ"})
+		return
+	}
+
+	if err := h.service.Register(input.GroupID, input.DeviceID, input.Name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลงทะเบียนอุปกรณ์ไม่สำเร็จ"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "ลงทะเบียนอุปกรณ์เรียบร้อย! ✨"})
+}
+
+// รับข้อมูลจากตัวเซนเซอร์ (Enter, Fall, Exit)
+func (h *Handler) ReceiveEvent(c *gin.Context) {
+	var input struct {
+		DeviceID string `json:"device_id" binding:"required"`
+		Type     string `json:"type" binding:"required"` // event/status
+		Name     string `json:"name" binding:"required"` // fall/enter/exit
+		Value    string `json:"value"`
+		Metadata string `json:"metadata"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูล Event ไม่ถูกต้อง"})
+		return
+	}
+
+	if err := h.service.ProcessEvent(input.DeviceID, input.Type, input.Name, input.Value, input.Metadata); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกข้อมูลไม่สำเร็จ"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "รับข้อมูลเรียบร้อย!"})
+}
