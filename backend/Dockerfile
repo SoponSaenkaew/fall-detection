@@ -1,30 +1,38 @@
-# ใช้ Go build stage
+# Stage 1: Build stage
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-# โหลด dependency ก่อน (cache layer)
+# ติดตั้ง build-base สำหรับ cgo (ถ้าจำเป็น)
+RUN apk add --no-cache build-base
+
+# โหลด dependency (ใช้ cache layer เพื่อความเร็ว)
 COPY go.mod go.sum ./
 RUN go mod download
 
-# copy source
+# Copy source code ทั้งหมด
 COPY . .
 
-# build binary
+# Build binary
 RUN go build -o server ./cmd/server/main.go
 
 # -------------------------
-
-# runtime stage (เล็กและเร็ว)
+# Stage 2: Runtime stage (ใช้ alpine ตัวเล็กเพื่อความประหยัดพื้นที่)
 FROM alpine:latest
+
+# ติดตั้ง ca-certificates สำหรับการส่ง HTTPS (สำคัญมากสำหรับการส่ง LINE/Discord!)
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-# copy binary จาก builder
+# Copy binary จาก builder stage
 COPY --from=builder /app/server .
 
-# port ที่ใช้
+# ✨ จุดสำคัญ: Copy ไฟล์ .env มาด้วยเพื่อให้โปรแกรมอ่าน Config ได้ค่ะ
+COPY .env .
+
+# Port ที่ Backend รันอยู่
 EXPOSE 8080
 
-# run
+# สั่งรันโปรแกรม
 CMD ["./server"]
