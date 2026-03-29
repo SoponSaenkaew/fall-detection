@@ -11,3 +11,12 @@ type Device struct {
 	Status   string `gorm:"default:'online'" json:"status"`   // สถานะเครื่อง
 	GroupID  uint   `json:"group_id"`                         // สังกัดกลุ่มไหน
 }
+
+type DeviceEvent struct {
+	gorm.Model
+	DeviceID string `gorm:"index;not null" json:"device_id"`
+	Type     string `gorm:"index;not null" json:"type"` // "event" หรือ "status"
+	Name     string `gorm:"index;not null" json:"name"` // "fall", "enter", "exit", "online"
+	Value    string `json:"value"`                      // ค่าที่ส่งมา (ถ้ามี)
+	Metadata string `gorm:"type:jsonb" json:"metadata"` // เก็บข้อมูล Custom อื่นๆ เป็น JSON
+}

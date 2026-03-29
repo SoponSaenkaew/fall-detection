@@ -1,6 +1,8 @@
 package database
 
 import (
+	"backend/internal/iot/device"
+	"backend/internal/iot/group"
 	"backend/internal/platform/config"
 	"backend/internal/user"
 
@@ -16,7 +18,7 @@ func ConnectDB() (*gorm.DB, error) {
 	}
 
 	// สั่งให้ GORM สร้าง/อัปเดต Table ตาม Struct ของเราอัตโนมัติ!
-	db.AutoMigrate(&user.User{})
+	db.AutoMigrate(&user.User{}, &group.Group{}, &device.Device{}, &device.DeviceEvent{})
 
 	return db, err
 }

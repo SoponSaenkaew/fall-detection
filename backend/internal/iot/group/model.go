@@ -1,7 +1,7 @@
 package group
 
 import (
-	"backend/internal/device"
+	"backend/internal/iot/device"
 
 	"gorm.io/gorm"
 )
