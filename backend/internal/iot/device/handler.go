@@ -3,6 +3,8 @@ package device
 import (
 	"net/http"
 
+	"backend/internal/iot"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -56,4 +58,21 @@ func (h *Handler) ReceiveEvent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "รับข้อมูลเรียบร้อย!"})
+}
+
+// เพิ่มใน internal/iot/device/handler.go
+
+func (h *Handler) AddNotificationConfig(c *gin.Context) {
+	var input iot.NotificationConfig
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ถูกต้องนะคะเซนเซย์"})
+		return
+	}
+
+	if err := h.service.CreateNotificationConfig(input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกการตั้งค่าไม่สำเร็จ"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "เพิ่มช่องทางแจ้งเตือนสำเร็จแล้วค่ะ! ✨"})
 }
