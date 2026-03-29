@@ -47,3 +47,16 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว! ✨"})
 }
+
+// เพิ่มใน backend/internal/iot/group/handler.go
+func (h *Handler) GetAll(c *gin.Context) {
+	val, _ := c.Get("user_id")
+	userID := uint(val.(float64)) // หรือใช้ switch-case ที่เซนเซย์แก้ไว้คราวก่อนค่ะ
+
+	groups, err := h.service.GetAll(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, groups)
+}
