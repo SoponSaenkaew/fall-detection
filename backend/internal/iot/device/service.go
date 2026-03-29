@@ -2,6 +2,7 @@ package device
 
 import (
 	"backend/internal/iot"
+	"backend/internal/iot/notifier"
 
 	"gorm.io/gorm"
 )
@@ -28,11 +29,20 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	if err := s.db.Where("device_id = ?", devID).First(&dev).Error; err != nil {
 		return err
 	}
-	return s.db.Create(&iot.DeviceEvent{
-		DeviceID: dev.ID,
-		Type:     evType,
-		Name:     name,
-		Value:    val,
-		Metadata: meta,
-	}).Error
+
+	// บันทึก Event ลง DB ปกติ
+	event := iot.DeviceEvent{DeviceID: dev.ID, Type: evType, Name: name, Value: val, Metadata: meta}
+	s.db.Create(&event)
+
+	// ✨ ถ้ามีการล้ม ให้ดึง Config การแจ้งเตือนมาทำงาน
+	// ใน service.go ของ device
+	if name == "fall" {
+		var configs []iot.NotificationConfig
+		s.db.Where("group_id = ? AND enabled = ?", dev.GroupID, true).Find(&configs)
+
+		for _, cfg := range configs {
+			go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, "เซนเซย์คะ! มีคนล้มในห้อง "+dev.Name)
+		}
+	}
+	return nil
 }
