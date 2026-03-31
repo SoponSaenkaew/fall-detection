@@ -99,3 +99,19 @@ func (h *Handler) GetNotificationConfigs(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, configs)
 }
+
+// backend/internal/iot/device/handler.go
+func (h *Handler) Update(c *gin.Context) {
+	originalID := c.Param("device_id")
+	var input iot.Device
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลที่ส่งมาไม่ถูกต้องค่ะ"})
+		return
+	}
+
+	if err := h.service.Update(originalID, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "อัปเดตข้อมูลอุปกรณ์ไม่สำเร็จ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "แก้ไขข้อมูลเซนเซอร์เรียบร้อยแล้วค่ะ! ✨"})
+}

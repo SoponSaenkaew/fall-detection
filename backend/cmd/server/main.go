@@ -45,10 +45,12 @@ func main() {
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
+			protected.PUT("/groups/:id", grpHandler.Update)
 			protected.DELETE("/groups/:id", grpHandler.Delete)
 
 			// จัดการอุปกรณ์
 			protected.POST("/devices", devHandler.Register)
+			protected.PUT("/devices/:device_id", devHandler.Update)
 			protected.DELETE("/devices/:device_id", devHandler.Delete)
 			protected.GET("/groups", grpHandler.GetAll)
 

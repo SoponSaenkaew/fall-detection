@@ -29,3 +29,10 @@ func (s *Service) Delete(groupID uint, userID uint) error {
 	// ลบกลุ่มโดยเช็คว่าเป็นเจ้าของกลุ่ม (userID) จริงไหม เพื่อความปลอดภัยค่ะ
 	return s.db.Where("id = ? AND user_id = ?", groupID, userID).Delete(&iot.Group{}).Error
 }
+
+func (s *Service) Update(groupID uint, userID uint, name string) error {
+	// ตรวจสอบความเป็นเจ้าของกลุ่มก่อนอัปเดตเพื่อความปลอดภัยค่ะ
+	return s.db.Model(&iot.Group{}).
+		Where("id = ? AND user_id = ?", groupID, userID).
+		Update("name", name).Error
+}
