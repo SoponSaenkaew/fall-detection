@@ -34,17 +34,36 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	event := iot.DeviceEvent{DeviceID: dev.ID, Type: evType, Name: name, Value: val, Metadata: meta}
 	s.db.Create(&event)
 
+	updates := make(map[string]interface{})
+
+	switch evType {
+	case "status":
+		updates["status"] = name // เช่น online / offline
+	case "event":
+		updates["latest_event"] = name // เช่น fall / enter / exit
+	}
+
 	// ✨ ถ้ามีการล้ม ให้ดึง Config การแจ้งเตือนมาทำงาน
 	// ใน service.go ของ device
+	// backend/internal/iot/device/service.go
 	if name == "fall" {
 		var configs []iot.NotificationConfig
+		// ดึงการตั้งค่าทั้งหมดที่เปิดใช้งาน (Enabled) ของกลุ่มนี้
 		s.db.Where("group_id = ? AND enabled = ?", dev.GroupID, true).Find(&configs)
 
 		for _, cfg := range configs {
-			go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, "เซนเซย์คะ! มีคนล้มในห้อง "+dev.Name)
+			msg := "เซนเซย์คะ! มีคนล้มในห้อง " + dev.Name
+			switch cfg.Type {
+			case "line":
+				// ส่งผ่าน LINE Messaging API
+				go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, msg)
+			case "webhook":
+				// ส่งผ่าน Webhook ทั่วไป (เช่น Discord)
+				go notifier.SendSimpleNotification("webhook", cfg.TargetURL, msg)
+			}
 		}
 	}
-	return nil
+	return s.db.Model(&dev).Updates(updates).Error
 }
 
 // เพิ่มใน internal/iot/device/service.go
