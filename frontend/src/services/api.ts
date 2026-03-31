@@ -18,6 +18,8 @@ export const deviceService = {
   create: (data: any) => api.post('/iot/devices', data),
   update: (id: string, data: any) => api.put(`/iot/devices/${id}`, data),
   delete: (id: string) => api.delete(`/iot/devices/${id}`),
+  getSettings: (deviceId: string) => api.get(`/iot/devices/${deviceId}/settings`),
+  updateSettings: (data: any) => api.put(`/iot/devices/settings`, data),
 };
 
 export const notificationService = {

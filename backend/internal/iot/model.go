@@ -30,6 +30,15 @@ type DeviceEvent struct {
 	Metadata string `gorm:"type:jsonb" json:"metadata"` // เก็บข้อมูล Custom อื่นๆ เป็น JSON
 }
 
+type DeviceSetting struct {
+	gorm.Model
+	DeviceID      string  `gorm:"uniqueIndex;not null" json:"device_id"`
+	FallThreshold float64 `gorm:"default:0.5" json:"fall_threshold"` // เกณฑ์การล้ม (เช่น ความเร็วหรือระยะที่เปลี่ยน)
+	MountHeight   float64 `gorm:"default:2.0" json:"mount_height"`   // ความสูงของเซนเซอร์จากพื้น (เมตร)
+	RoomWidth     float64 `gorm:"default:4.0" json:"room_width"`     // ความกว้างของห้อง (เมตร)
+	RoomLength    float64 `gorm:"default:4.0" json:"room_length"`    // ความยาวของห้อง (เมตร)
+}
+
 type NotificationConfig struct {
 	gorm.Model
 	GroupID     uint   `json:"group_id"`
