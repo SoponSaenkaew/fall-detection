@@ -81,3 +81,13 @@ func (s *Service) GetNotificationConfigs(groupID uint) ([]iot.NotificationConfig
 func (s *Service) Delete(deviceID string) error {
 	return s.db.Where("device_id = ?", deviceID).Delete(&iot.Device{}).Error
 }
+
+// backend/internal/iot/device/service.go
+func (s *Service) Update(originalID string, newData iot.Device) error {
+	return s.db.Model(&iot.Device{}).
+		Where("device_id = ?", originalID).
+		Updates(map[string]interface{}{
+			"device_id": newData.DeviceID,
+			"name":      newData.Name,
+		}).Error
+}

@@ -1,88 +1,105 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { groupService, deviceService, notificationService } from '@/services/api';
+import { useDashboard } from '@/hooks/useDashboard';
 import DeviceCard from '@/components/Dashboard/DeviceCard';
-import { Layout, Plus, Trash2, X, SmartphoneNfc, BellRing } from 'lucide-react';
 import Header from '@/components/Dashboard/Header';
+// ✨ เพิ่ม EditGroupModal และ EditDeviceModal เข้ามาในรายการ import ค่ะ
+import { 
+  AddGroupModal, 
+  AddDeviceModal, 
+  NotificationModal, 
+  EditGroupModal, 
+  EditDeviceModal 
+} from '@/components/Dashboard/Modals';
+import { Layout, Plus, Trash2, BellRing, Pencil } from 'lucide-react';
 
 export default function Dashboard() {
-  const [groups, setGroups] = useState<any[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [showAddDevModal, setShowAddDevModal] = useState<{show: boolean, groupId: number | null}>({show: false, groupId: null});
-  const [newDev, setNewDev] = useState({ device_id: "", name: "" });
-  const [showNotifModal, setShowNotifModal] = useState<{show: boolean, groupId: number | null}>({show: false, groupId: null});
-  const [notifForm, setNotifForm] = useState({ type: 'line', line_token: '', line_group_id: '', target_url: '' });
-
+  const {
+    groups, showAddModal, setShowAddModal, newGroupName, setNewGroupName,
+    showAddDevModal, setShowAddDevModal, newDev, setNewDev,
+    showNotifModal, setShowNotifModal, notifForm, setNotifForm,
+    handleAddGroup, handleDeleteGroup, handleAddDevice, handleDeleteDevice, handleSaveNotif,
+    // ✨ ดึง State และ Handler ใหม่สำหรับการแก้ไขออกมาจาก Hook ค่ะ
+    showEditGroup, setShowEditGroup, editGroupName, setEditGroupName,
+    showEditDev, setShowEditDev, editDevData, setEditDevData,
+    handleUpdateGroup, handleUpdateDevice
+  } = useDashboard();
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const fetchData = async () => {
-    try {
-      const res = await groupService.getAll();
-      setGroups(res.data);
-    } catch (err) { console.error("ดึงข้อมูลไม่สำเร็จ"); }
-  };
-  // --- Handler สำหรับการลบกลุ่ม (Group) ---
-  const handleDeleteGroup = async (id: number) => {
-    if (!confirm("เซนเซย์แน่ใจนะค๊ะว่าจะลบกลุ่มนี้? ข้อมูลอุปกรณ์ข้างในจะหายไปด้วยนะ!")) return;
-    try {
-      // เรียกใช้ service ที่แยกไว้
-      await groupService.delete(id); 
-      alert("ลบสถานที่เรียบร้อยแล้วค่ะ! ✨");
-      fetchData(); // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอ
-    } catch (err: any) {
-      alert(err.response?.data?.error || "ลบไม่สำเร็จค่ะ");
-    }
-  };
-
-  // --- Handler สำหรับการลบอุปกรณ์ (Device) ---
-  const handleDeleteDevice = async (deviceId: string) => {
-    if (!confirm(`จะลบอุปกรณ์รหัส ${deviceId} ใช่ไหมคะเซนเซย์?`)) return;
-    try {
-      // เรียกใช้ service ที่แยกไว้
-      await deviceService.delete(deviceId);
-      alert("ลบอุปกรณ์เรียบร้อยแล้วค่ะ! ✨");
-      fetchData(); // อัปเดตรายการอุปกรณ์ในกลุ่ม
-    } catch (err: any) {
-      alert(err.response?.data?.error || "ลบอุปกรณ์ไม่สำเร็จค่ะ");
-    }
-  };
-
-  // ... รวม Handler ต่างๆ ไว้ที่นี่ (handleAddGroup, handleDeleteGroup, handleAddDevice, handleSaveNotif) ...
-  // ทุกฟังก์ชันจะเปลี่ยนไปเรียกใช้ service แทน เช่น groupService.create(newGroupName)
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      {/* Header, Modals ต่างๆ ยังคงอยู่ตรงนี้ หรือจะแยกออกไปอีกก็ได้ค่ะ */}
       <Header onAddGroup={() => setShowAddModal(true)} />
-      
+
+      {/* --- รวม Modals ไว้ที่จุดเดียว --- */}
+      <AddGroupModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleAddGroup} value={newGroupName} onChange={setNewGroupName} />
+      <NotificationModal show={showNotifModal.show} onClose={() => setShowNotifModal({show: false, groupId: null})} onSubmit={handleSaveNotif} form={notifForm} setForm={setNotifForm} />
+      <AddDeviceModal show={showAddDevModal.show} onClose={() => setShowAddDevModal({show: false, groupId: null})} onSubmit={handleAddDevice} newDev={newDev} setNewDev={setNewDev} />
+
+      {/* ✨ เพิ่ม Modals สำหรับการแก้ไขเข้าไปค่ะ */}
+      <EditGroupModal 
+        isOpen={showEditGroup.show} 
+        onClose={() => setShowEditGroup({show: false, id: null})} 
+        onSubmit={handleUpdateGroup} 
+        value={editGroupName} 
+        onChange={setEditGroupName} 
+      />
+      <EditDeviceModal 
+        show={showEditDev.show} 
+        onClose={() => setShowEditDev({show: false, originalId: null})} 
+        onSubmit={handleUpdateDevice} 
+        devData={editDevData} 
+        setDevData={setEditDevData} 
+      />
+
+      {/* --- ตารางแสดงผลกลุ่ม --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {groups.map((group) => (
           <div key={group.ID} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative group">
-            {/* Group Header & Actions */}
             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-              <button onClick={() => setShowNotifModal({show: true, groupId: group.ID})} className="text-gray-400 hover:text-yellow-500"><BellRing size={18} /></button>
-              <button onClick={() => handleDeleteGroup(group.ID)} className="text-gray-400 hover:text-red-500"><Trash2 size={18} /></button>
+              {/* ✨ ปุ่มแก้ไขชื่อกลุ่ม (ดินสอ) */}
+              <button 
+                onClick={() => {
+                  setEditGroupName(group.name);
+                  setShowEditGroup({show: true, id: group.ID});
+                }} 
+                className="text-gray-400 hover:text-blue-500" 
+                title="แก้ไขชื่อสถานที่"
+              >
+                <Pencil size={18} />
+              </button>
+              
+              <button onClick={() => setShowNotifModal({show: true, groupId: group.ID})} className="text-gray-400 hover:text-yellow-500" title="ตั้งค่าการแจ้งเตือน"><BellRing size={18} /></button>
+              <button onClick={() => handleDeleteGroup(group.ID)} className="text-gray-400 hover:text-red-500" title="ลบกลุ่มนี้"><Trash2 size={18} /></button>
             </div>
             
-            <h2 className="text-xl font-bold flex items-center mb-4 text-blue-600 border-b pb-2"><Layout className="mr-2" />{group.name}</h2>
+            <h2 className="text-xl font-bold flex items-center mb-4 text-blue-600 border-b pb-2 text-left"><Layout className="mr-2" />{group.name}</h2>
             
             <div className="space-y-4">
               {group.devices?.map((dev: any) => (
-                <DeviceCard key={dev.ID} dev={dev} formatTime={formatTime} onDelete={handleDeleteDevice} />
+                <div key={dev.ID} className="relative group/dev">
+                  {/* ✨ ปุ่มแก้ไขอุปกรณ์ (แสดงเมื่อเอาเมาส์ชี้ที่ตัวอุปกรณ์) */}
+                  <button 
+                    onClick={() => {
+                      setEditDevData({ device_id: dev.device_id, name: dev.name });
+                      setShowEditDev({ show: true, originalId: dev.device_id });
+                    }}
+                    className="absolute top-2 right-8 z-10 text-gray-300 hover:text-blue-500 transition opacity-0 group-hover/dev:opacity-100"
+                    title="แก้ไขข้อมูลอุปกรณ์"
+                  >
+                    <Pencil size={14} />
+                  </button>
+
+                  <DeviceCard 
+                    dev={dev} 
+                    formatTime={formatTime} 
+                    onDelete={handleDeleteDevice} 
+                  />
+                </div>
               ))}
-              
-              <button onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} className="w-full py-2 border-2 border-dashed border-blue-100 rounded-xl text-blue-400 text-xs hover:bg-blue-50 transition flex items-center justify-center">
+              <button onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} className="w-full py-2 border-2 border-dashed border-blue-100 rounded-xl text-blue-400 text-xs hover:bg-blue-50 transition flex items-center justify-center font-medium">
                 <Plus size={14} className="mr-1" /> เพิ่มอุปกรณ์
               </button>
             </div>
