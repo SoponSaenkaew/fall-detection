@@ -1,6 +1,7 @@
 package device
 
 import (
+	"fmt"
 	"net/http"
 
 	"backend/internal/iot"
@@ -84,4 +85,17 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ลบอุปกรณ์เรียบร้อยแล้วค่ะ! ✨"})
+}
+
+func (h *Handler) GetNotificationConfigs(c *gin.Context) {
+	groupIDStr := c.Query("group_id") // รับ group_id จาก Query Param
+	var groupID uint
+	fmt.Sscanf(groupIDStr, "%d", &groupID)
+
+	configs, err := h.service.GetNotificationConfigs(groupID) //
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ดึงข้อมูลไม่สำเร็จ"})
+		return
+	}
+	c.JSON(http.StatusOK, configs)
 }
