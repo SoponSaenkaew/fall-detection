@@ -76,3 +76,12 @@ func (h *Handler) AddNotificationConfig(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "เพิ่มช่องทางแจ้งเตือนสำเร็จแล้วค่ะ! ✨"})
 }
+
+func (h *Handler) Delete(c *gin.Context) {
+	deviceID := c.Param("device_id")
+	if err := h.service.Delete(deviceID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลบอุปกรณ์ไม่สำเร็จค่ะ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ลบอุปกรณ์เรียบร้อยแล้วค่ะ! ✨"})
+}

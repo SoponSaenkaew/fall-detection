@@ -1,6 +1,7 @@
 package group
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,4 +47,36 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว! ✨"})
+}
+
+// เพิ่มใน backend/internal/iot/group/handler.go
+func (h *Handler) GetAll(c *gin.Context) {
+	val, _ := c.Get("user_id")
+	userID := uint(val.(float64)) // หรือใช้ switch-case ที่เซนเซย์แก้ไว้คราวก่อนค่ะ
+
+	groups, err := h.service.GetAll(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, groups)
+}
+
+func (h *Handler) Delete(c *gin.Context) {
+	idStr := c.Param("id") // รับ ID จาก URL
+	val, _ := c.Get("user_id")
+	userID := uint(val.(float64))
+
+	if err := h.service.Delete(uint(castID(idStr)), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลบกลุ่มไม่สำเร็จค่ะ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ลบสถานที่เรียบร้อยแล้วค่ะ! ✨"})
+}
+
+// ฟังก์ชันช่วยแปลง ID
+func castID(s string) int {
+	var id int
+	fmt.Sscanf(s, "%d", &id)
+	return id
 }

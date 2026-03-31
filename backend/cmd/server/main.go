@@ -8,6 +8,8 @@ import (
 	"backend/internal/iot/group"  // เพิ่ม
 	"backend/internal/middleware"
 
+	"github.com/gin-contrib/cors"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,6 +27,13 @@ func main() {
 	devHandler := device.NewHandler(device.NewService(db)) // เพิ่ม
 
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	v1 := r.Group("/api/v1")
 	{
@@ -36,9 +45,12 @@ func main() {
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
+			protected.DELETE("/groups/:id", grpHandler.Delete)
 
 			// จัดการอุปกรณ์
 			protected.POST("/devices", devHandler.Register)
+			protected.DELETE("/devices/:device_id", devHandler.Delete)
+			protected.GET("/groups", grpHandler.GetAll)
 
 			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
