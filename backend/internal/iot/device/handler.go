@@ -1,6 +1,7 @@
 package device
 
 import (
+	"fmt"
 	"net/http"
 
 	"backend/internal/iot"
@@ -84,4 +85,58 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ลบอุปกรณ์เรียบร้อยแล้วค่ะ! ✨"})
+}
+
+func (h *Handler) GetNotificationConfigs(c *gin.Context) {
+	groupIDStr := c.Query("group_id") // รับ group_id จาก Query Param
+	var groupID uint
+	fmt.Sscanf(groupIDStr, "%d", &groupID)
+
+	configs, err := h.service.GetNotificationConfigs(groupID) //
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ดึงข้อมูลไม่สำเร็จ"})
+		return
+	}
+	c.JSON(http.StatusOK, configs)
+}
+
+// backend/internal/iot/device/handler.go
+func (h *Handler) Update(c *gin.Context) {
+	originalID := c.Param("device_id")
+	var input iot.Device
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลที่ส่งมาไม่ถูกต้องค่ะ"})
+		return
+	}
+
+	if err := h.service.Update(originalID, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "อัปเดตข้อมูลอุปกรณ์ไม่สำเร็จ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "แก้ไขข้อมูลเซนเซอร์เรียบร้อยแล้วค่ะ! ✨"})
+}
+
+func (h *Handler) UpdateSettings(c *gin.Context) {
+	var input iot.DeviceSetting
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลการตั้งค่าไม่ถูกต้องค่ะเซนเซย์"})
+		return
+	}
+
+	if err := h.service.UpdateSettings(input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกค่าพารามิเตอร์ไม่สำเร็จ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "อัปเดตเกณฑ์การตรวจจับเรียบร้อยแล้วค่ะ! ✨"})
+}
+
+func (h *Handler) GetSettings(c *gin.Context) {
+	deviceID := c.Param("device_id")
+	settings, err := h.service.GetSettings(deviceID)
+	if err != nil {
+		// ถ้ายังไม่มีการตั้งค่า ให้คืนค่า Default ไปก่อนนะค๊ะ
+		c.JSON(http.StatusOK, iot.DeviceSetting{DeviceID: deviceID})
+		return
+	}
+	c.JSON(http.StatusOK, settings)
 }

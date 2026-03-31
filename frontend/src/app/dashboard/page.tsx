@@ -1,224 +1,181 @@
 "use client";
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { Layout, Smartphone, Plus, Trash2, X, Clock, UserCheck, SmartphoneNfc } from 'lucide-react';
+
+import { useDashboard } from '@/hooks/useDashboard';
+import DeviceCard from '@/components/Dashboard/DeviceCard';
+import Header from '@/components/Dashboard/Header';
+import { 
+  AddGroupModal, 
+  AddDeviceModal, 
+  NotificationModal, 
+  EditGroupModal, 
+  EditDeviceModal,
+  DeviceSettingsModal 
+} from '@/components/Dashboard/Modals';
+import { Layout, Plus, Trash2, BellRing, Pencil, Settings2 } from 'lucide-react';
 
 export default function Dashboard() {
-  const [groups, setGroups] = useState<any[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
+  // ดึง State และ Handler ทั้งหมดมาจาก Custom Hook ที่เราจัดระเบียบไว้ค่ะ ✨
+  const {
+    groups, 
+    showAddModal, setShowAddModal, 
+    newGroupName, setNewGroupName,
+    showAddDevModal, setShowAddDevModal, 
+    newDev, setNewDev,
+    showNotifModal, setShowNotifModal, 
+    notifForm, setNotifForm,
+    showEditGroup, setShowEditGroup, 
+    editGroupName, setEditGroupName,
+    showEditDev, setShowEditDev, 
+    editDevData, setEditDevData,
+    showSettings, setShowSettings, 
+    currentSettings, setCurrentSettings,
+    handleAddGroup, handleDeleteGroup, handleUpdateGroup,
+    handleAddDevice, handleDeleteDevice, handleUpdateDevice,
+    handleSaveNotif, handleOpenSettings, handleSaveSettings
+  } = useDashboard();
 
-  // สถานะสำหรับ Modal เพิ่มอุปกรณ์ค่ะ
-  const [showAddDevModal, setShowAddDevModal] = useState<{show: boolean, groupId: number | null}>({show: false, groupId: null});
-  const [newDev, setNewDev] = useState({ device_id: "", name: "" });
-
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const apiConfig = { headers: { Authorization: `Bearer ${token}` } };
-
+  // ฟังก์ชันช่วยจัดรูปแบบเวลาให้ดูง่ายค่ะ
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const fetchData = async () => {
-    try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/iot/groups`, apiConfig);
-      setGroups(res.data);
-    } catch (err) {
-      console.error("ดึงข้อมูลไม่สำเร็จค่ะเซนเซย์");
-    }
-  };
-
-  const handleAddGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/iot/groups`, 
-        { name: newGroupName },
-        apiConfig
-      );
-      setNewGroupName("");
-      setShowAddModal(false);
-      fetchData();
-    } catch (err) { alert("สร้างกลุ่มไม่สำเร็จค่ะ"); }
-  };
-
-  const handleDeleteGroup = async (id: number) => {
-    if (!confirm("เซนเซย์แน่ใจนะค๊ะว่าจะลบกลุ่มนี้? ข้อมูลอุปกรณ์ข้างในจะหายไปด้วยนะ!")) return;
-    try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/iot/groups/${id}`, apiConfig);
-      fetchData();
-    } catch (err) { alert("ลบไม่สำเร็จค่ะ"); }
-  };
-
-  // --- ฟังก์ชันใหม่สำหรับจัดการ Device ค่ะ ---
-  const handleAddDevice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/iot/devices`, 
-        { ...newDev, group_id: showAddDevModal.groupId }, 
-        apiConfig
-      );
-      setNewDev({ device_id: "", name: "" });
-      setShowAddDevModal({ show: false, groupId: null });
-      fetchData();
-    } catch (err) { alert("ลงทะเบียนอุปกรณ์ไม่สำเร็จค่ะ เช็ค Device ID ซ้ำไหมนะค๊ะ?"); }
-  };
-
-  const handleDeleteDevice = async (deviceId: string) => {
-    if (!confirm(`จะลบอุปกรณ์รหัส ${deviceId} ใช่ไหมคะเซนเซย์?`)) return;
-    try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/iot/devices/${deviceId}`, apiConfig);
-      fetchData();
-    } catch (err) { alert("ลบอุปกรณ์ไม่สำเร็จค่ะ"); }
-  };
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <header className="flex justify-between items-center mb-8 border-b pb-4">
-        <div>
-          <h1 className="text-3xl font-bold text-blue-800">IoT Dashboard 🖥️</h1>
-          <p className="text-gray-500 text-sm">อัปเดตล่าสุด: {new Date().toLocaleTimeString('th-TH')}</p>
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-lg"
-        >
-          <Plus size={20} className="mr-2" /> เพิ่มกลุ่มใหม่
-        </button>
-      </header>
+      {/* 1. Header ส่วนหัวของ Dashboard */}
+      <Header onAddGroup={() => setShowAddModal(true)} />
 
-      {/* Modal เพิ่มกลุ่ม */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleAddGroup} className="bg-white p-6 rounded-xl w-96 shadow-2xl border-t-4 border-blue-500">
-            <div className="flex justify-between mb-4 italic text-blue-600">
-              <h3 className="text-xl font-bold">สร้างสถานที่ใหม่นะเซนเซย์! 🏠</h3>
-              <button type="button" onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-black"><X /></button>
-            </div>
-            <input 
-              autoFocus
-              className="w-full border p-2 rounded-lg mb-4 focus:ring-2 focus:ring-blue-400 outline-none"
-              placeholder="เช่น ห้องน้ำชั้น 2"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              required
-            />
-            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">ยืนยัน ✨</button>
-          </form>
-        </div>
-      )}
+      {/* 2. ส่วนของ Modals ทั้งหมด (ประกอบร่าง) */}
+      
+      {/* เพิ่มกลุ่ม/สถานที่ */}
+      <AddGroupModal 
+        isOpen={showAddModal} 
+        onClose={() => setShowAddModal(false)} 
+        onSubmit={handleAddGroup} 
+        value={newGroupName} 
+        onChange={setNewGroupName} 
+      />
 
-      {/* Modal เพิ่มอุปกรณ์ (Device) */}
-      {showAddDevModal.show && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleAddDevice} className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl border-t-4 border-green-500">
-            <div className="flex justify-between mb-4">
-              <h3 className="text-xl font-bold text-green-700 flex items-center">
-                <SmartphoneNfc className="mr-2" /> เพิ่มเซนเซอร์ใหม่
-              </h3>
-              <button type="button" onClick={() => setShowAddDevModal({show: false, groupId: null})}><X /></button>
-            </div>
-            <div className="space-y-4">
-              <input 
-                className="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="Hardware ID (เช่น LD6002C_01)"
-                value={newDev.device_id}
-                onChange={(e) => setNewDev({...newDev, device_id: e.target.value})}
-                required
-              />
-              <input 
-                className="w-full border p-2 rounded-lg outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="ชื่อเรียก (เช่น เซนเซอร์ข้างเตียง)"
-                value={newDev.name}
-                onChange={(e) => setNewDev({...newDev, name: e.target.value})}
-                required
-              />
-              <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition">ลงทะเบียนอุปกรณ์ ✨</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* แก้ไขชื่อกลุ่ม/สถานที่ */}
+      <EditGroupModal 
+        isOpen={showEditGroup.show} 
+        onClose={() => setShowEditGroup({show: false, id: null})} 
+        onSubmit={handleUpdateGroup} 
+        value={editGroupName} 
+        onChange={setEditGroupName} 
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* เพิ่มอุปกรณ์เซนเซอร์ */}
+      <AddDeviceModal 
+        show={showAddDevModal.show} 
+        onClose={() => setShowAddDevModal({show: false, groupId: null})} 
+        onSubmit={handleAddDevice} 
+        newDev={newDev} 
+        setNewDev={setNewDev} 
+      />
+
+      {/* แก้ไขข้อมูลอุปกรณ์ (Name & Hardware ID) */}
+      <EditDeviceModal 
+        show={showEditDev.show} 
+        onClose={() => setShowEditDev({show: false, originalId: null})} 
+        onSubmit={handleUpdateDevice} 
+        devData={editDevData} 
+        setDevData={setEditDevData} 
+      />
+
+      {/* ตั้งค่าพารามิเตอร์การล้ม/ความสูง/ขนาดห้อง */}
+      <DeviceSettingsModal 
+        show={showSettings.show} 
+        onClose={() => setShowSettings({show: false, deviceId: ""})} 
+        onSubmit={handleSaveSettings} 
+        settings={currentSettings} 
+        setSettings={setCurrentSettings} 
+      />
+
+      {/* ตั้งค่าการแจ้งเตือน Line/Webhook */}
+      <NotificationModal 
+        show={showNotifModal.show} 
+        onClose={() => setShowNotifModal({show: false, groupId: null})} 
+        onSubmit={handleSaveNotif} 
+        form={notifForm} 
+        setForm={setNotifForm} 
+      />
+
+      {/* 3. ส่วนแสดงผลกลุ่มและอุปกรณ์ (Main Content) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
         {groups.map((group) => (
           <div key={group.ID} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative group">
-            <button 
-              onClick={() => handleDeleteGroup(group.ID)}
-              className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-              title="ลบกลุ่มนี้"
-            >
-              <Trash2 size={20} />
-            </button>
+            {/* ปุ่มจัดการกลุ่ม (จะปรากฏเมื่อ Hover) */}
+            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+              <button 
+                onClick={() => {
+                  setEditGroupName(group.name);
+                  setShowEditGroup({show: true, id: group.ID});
+                }} 
+                className="text-gray-300 hover:text-blue-500 transition"
+                title="แก้ไขชื่อสถานที่"
+              >
+                <Pencil size={18} />
+              </button>
+              <button 
+                onClick={() => setShowNotifModal({show: true, groupId: group.ID})} 
+                className="text-gray-300 hover:text-yellow-500 transition"
+                title="ตั้งค่าแจ้งเตือน"
+              >
+                <BellRing size={18} />
+              </button>
+              <button 
+                onClick={() => handleDeleteGroup(group.ID)} 
+                className="text-gray-300 hover:text-red-500 transition"
+                title="ลบกลุ่มนี้"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
             
-            <div className="flex items-center mb-4 text-blue-600 border-b pb-2">
+            <div className="flex items-center mb-4 text-blue-600 border-b pb-2 text-left">
               <Layout className="mr-2" />
               <h2 className="text-xl font-bold">{group.name}</h2>
             </div>
             
             <div className="space-y-4">
               {group.devices?.map((dev: any) => (
-                <div key={dev.ID} className="p-4 bg-slate-50 rounded-xl border border-gray-100 relative group/dev">
-                  {/* ปุ่มลบอุปกรณ์รายตัว */}
-                  <button 
-                    onClick={() => handleDeleteDevice(dev.device_id)}
-                    className="absolute top-2 right-2 text-gray-300 hover:text-red-500 transition opacity-0 group-hover/dev:opacity-100"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center font-medium text-gray-700 text-sm">
-                      <Smartphone size={16} className="mr-2 text-blue-400" />
-                      {dev.name}
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${dev.status === 'online' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                      {dev.status}
-                    </span>
+                <div key={dev.ID} className="relative group/dev">
+                  {/* แผงควบคุมด่วนสำหรับอุปกรณ์แต่ละตัว */}
+                  <div className="absolute top-2 right-8 z-10 flex gap-2 opacity-0 group-hover/dev:opacity-100 transition">
+                    <button 
+                      onClick={() => handleOpenSettings(dev.device_id)}
+                      className="text-gray-300 hover:text-indigo-500"
+                      title="ตั้งค่าพารามิเตอร์เซนเซอร์"
+                    >
+                      <Settings2 size={14} />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setEditDevData({ device_id: dev.device_id, name: dev.name });
+                        setShowEditDev({ show: true, originalId: dev.device_id });
+                      }}
+                      className="text-gray-300 hover:text-blue-500"
+                      title="แก้ไขข้อมูลอุปกรณ์"
+                    >
+                      <Pencil size={14} />
+                    </button>
                   </div>
 
-                  <div className="flex flex-col gap-2 mt-3 p-3 bg-white rounded-lg shadow-sm border border-blue-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <UserCheck size={16} className="mr-2 text-blue-400" />
-                        <span>สถานะล่าสุด:</span>
-                      </div>
-                      <span className={`text-sm font-bold ${dev.latest_event === 'fall' ? 'text-red-500 animate-bounce' : 'text-blue-600'}`}>
-                        {dev.latest_event === 'enter' ? 'กำลังใช้งาน 🚪' : 
-                         dev.latest_event === 'exit' ? 'ว่าง 🟢' : 
-                         dev.latest_event === 'fall' ? 'คนล้ม!!! ⚠️' : 'ไม่มีข้อมูล'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-[11px] text-gray-400">
-                      <div className="flex items-center">
-                        <Clock size={12} className="mr-1" />
-                        อัปเดตเมื่อ:
-                      </div>
-                      <span>{formatTime(dev.UpdatedAt)}</span>
-                    </div>
-                  </div>
+                  <DeviceCard 
+                    dev={dev} 
+                    formatTime={formatTime} 
+                    onDelete={handleDeleteDevice} 
+                  />
                 </div>
               ))}
               
-              {/* ปุ่มสำหรับเปิด Modal เพิ่มอุปกรณ์ในกลุ่มนี้ค่ะ */}
               <button 
-                onClick={() => setShowAddDevModal({show: true, groupId: group.ID})}
+                onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} 
                 className="w-full py-2 border-2 border-dashed border-blue-100 rounded-xl text-blue-400 text-xs hover:bg-blue-50 transition flex items-center justify-center font-medium"
               >
                 <Plus size={14} className="mr-1" /> เพิ่มอุปกรณ์ใน {group.name}
               </button>
-
-              {(!group.devices || group.devices.length === 0) && (
-                <div className="text-center py-4">
-                  <p className="text-gray-400 text-[10px] italic">ยังไม่มีเซนเซอร์ในห้องนี้ค่ะ</p>
-                </div>
-              )}
             </div>
           </div>
         ))}

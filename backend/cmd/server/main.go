@@ -45,14 +45,19 @@ func main() {
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
+			protected.PUT("/groups/:id", grpHandler.Update)
 			protected.DELETE("/groups/:id", grpHandler.Delete)
 
 			// จัดการอุปกรณ์
 			protected.POST("/devices", devHandler.Register)
+			protected.PUT("/devices/:device_id", devHandler.Update)
 			protected.DELETE("/devices/:device_id", devHandler.Delete)
+			protected.GET("/devices/:device_id/settings", devHandler.GetSettings)
+			protected.PUT("/devices/settings", devHandler.UpdateSettings)
 			protected.GET("/groups", grpHandler.GetAll)
 
 			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
+			protected.GET("/notifications", devHandler.GetNotificationConfigs)
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
 
 			protected.GET("/profile", func(c *gin.Context) {
@@ -66,6 +71,7 @@ func main() {
 
 		// API สำหรับตัว Device ส่งข้อมูล (ยังไม่ล็อกกุญแจเพื่อให้ Sensor ส่งง่ายค่ะ)
 		v1.POST("/events", devHandler.ReceiveEvent)
+		v1.GET("/config/:device_id", devHandler.GetSettings)
 	}
 
 	r.Run(":8080")

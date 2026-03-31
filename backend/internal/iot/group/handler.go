@@ -80,3 +80,23 @@ func castID(s string) int {
 	fmt.Sscanf(s, "%d", &id)
 	return id
 }
+
+func (h *Handler) Update(c *gin.Context) {
+	idStr := c.Param("id")
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "กรุณาระบุชื่อกลุ่มใหม่ด้วยค่ะ"})
+		return
+	}
+
+	val, _ := c.Get("user_id")
+	userID := uint(val.(float64))
+
+	if err := h.service.Update(uint(castID(idStr)), userID, input.Name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "แก้ไขชื่อกลุ่มไม่สำเร็จค่ะ"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "อัปเดตชื่อสถานที่เรียบร้อย! ✨"})
+}
