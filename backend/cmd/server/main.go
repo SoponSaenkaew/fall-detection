@@ -53,6 +53,7 @@ func main() {
 			protected.GET("/groups", grpHandler.GetAll)
 
 			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
+			protected.GET("/notifications", devHandler.GetNotificationConfigs)
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
 
 			protected.GET("/profile", func(c *gin.Context) {
