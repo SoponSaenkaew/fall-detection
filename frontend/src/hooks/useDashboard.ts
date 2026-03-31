@@ -17,6 +17,15 @@ export const useDashboard = () => {
   const [showEditDev, setShowEditDev] = useState<{show: boolean, originalId: string | null}>({show: false, originalId: null});
   const [editDevData, setEditDevData] = useState({ device_id: "", name: "" });
 
+  const [showSettings, setShowSettings] = useState({ show: false, deviceId: "" });
+  const [currentSettings, setCurrentSettings] = useState({
+    device_id: "",
+    fall_threshold: 0.5,
+    mount_height: 2.0,
+    room_width: 4.0,
+    room_length: 4.0
+  });
+
   const fetchData = async () => {
     try {
       const res = await groupService.getAll();
@@ -93,6 +102,36 @@ export const useDashboard = () => {
     } catch (err) { alert("บันทึกไม่สำเร็จค่ะ"); }
   };
 
+
+  // ✨ ฟังก์ชันเปิด Modal และดึงค่าจาก API
+  const handleOpenSettings = async (deviceId: string) => {
+    try {
+      const res = await deviceService.getSettings(deviceId);
+      setCurrentSettings(res.data);
+      setShowSettings({ show: true, deviceId });
+    } catch (err) {
+      // ถ้ายังไม่มีค่าใน DB ให้ใช้ค่าเริ่มต้นและผูกกับ DeviceID นั้นๆ ค่ะ
+      setCurrentSettings({
+        device_id: deviceId,
+        fall_threshold: 0.5,
+        mount_height: 2.0,
+        room_width: 4.0,
+        room_length: 4.0
+      });
+      setShowSettings({ show: true, deviceId });
+    }
+  };
+
+  // ✨ ฟังก์ชันบันทึกค่าพารามิเตอร์
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await deviceService.updateSettings(currentSettings);
+      alert("บันทึกค่าพารามิเตอร์สำเร็จ! ✨");
+      setShowSettings({ show: false, deviceId: "" });
+    } catch (err) { alert("บันทึกไม่สำเร็จค่ะเซนเซย์"); }
+  };
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
@@ -117,6 +156,10 @@ export const useDashboard = () => {
     editDevData, setEditDevData,
     handleUpdateGroup,
     handleUpdateDevice,
+
+    showSettings, setShowSettings,
+    currentSettings, setCurrentSettings,
+    handleOpenSettings, handleSaveSettings,
 
     // ... Handler เดิม ...
     handleAddGroup, handleDeleteGroup,

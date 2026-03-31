@@ -91,3 +91,16 @@ func (s *Service) Update(originalID string, newData iot.Device) error {
 			"name":      newData.Name,
 		}).Error
 }
+
+func (s *Service) UpdateSettings(settings iot.DeviceSetting) error {
+	// ใช้ Save เพื่อทำ Upsert (ถ้ามี ID เดิมจะอัปเดต ถ้าไม่มีจะสร้างใหม่ค่ะ)
+	return s.db.Where("device_id = ?", settings.DeviceID).
+		Assign(settings).
+		FirstOrCreate(&iot.DeviceSetting{DeviceID: settings.DeviceID}).Error
+}
+
+func (s *Service) GetSettings(deviceID string) (iot.DeviceSetting, error) {
+	var settings iot.DeviceSetting
+	err := s.db.Where("device_id = ?", deviceID).First(&settings).Error
+	return settings, err
+}
