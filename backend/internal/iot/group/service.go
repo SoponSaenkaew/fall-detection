@@ -24,3 +24,8 @@ func (s *Service) GetAll(userID uint) ([]iot.Group, error) {
 	err := s.db.Where("user_id = ?", userID).Preload("Devices").Find(&groups).Error
 	return groups, err
 }
+
+func (s *Service) Delete(groupID uint, userID uint) error {
+	// ลบกลุ่มโดยเช็คว่าเป็นเจ้าของกลุ่ม (userID) จริงไหม เพื่อความปลอดภัยค่ะ
+	return s.db.Where("id = ? AND user_id = ?", groupID, userID).Delete(&iot.Group{}).Error
+}

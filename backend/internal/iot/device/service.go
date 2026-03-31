@@ -77,3 +77,7 @@ func (s *Service) GetNotificationConfigs(groupID uint) ([]iot.NotificationConfig
 	err := s.db.Where("group_id = ?", groupID).Find(&configs).Error
 	return configs, err
 }
+
+func (s *Service) Delete(deviceID string) error {
+	return s.db.Where("device_id = ?", deviceID).Delete(&iot.Device{}).Error
+}
