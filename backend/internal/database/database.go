@@ -17,7 +17,14 @@ func ConnectDB() (*gorm.DB, error) {
 	}
 
 	// สั่งให้ GORM สร้าง/อัปเดต Table ตาม Struct ของเราอัตโนมัติ!
-	db.AutoMigrate(&user.User{}, &iot.Group{}, &iot.Device{}, &iot.DeviceEvent{}, &iot.NotificationConfig{})
+	db.AutoMigrate(
+		&user.User{},
+		&iot.Group{},
+		&iot.Device{},
+		&iot.DeviceEvent{},
+		&iot.NotificationConfig{},
+		&iot.DeviceSetting{},
+	)
 
 	return db, err
 }
