@@ -45,9 +45,11 @@ func main() {
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
+			protected.DELETE("/groups/:id", grpHandler.Delete)
 
 			// จัดการอุปกรณ์
 			protected.POST("/devices", devHandler.Register)
+			protected.DELETE("/devices/:device_id", devHandler.Delete)
 			protected.GET("/groups", grpHandler.GetAll)
 
 			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
