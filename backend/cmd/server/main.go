@@ -28,7 +28,8 @@ func main() {
 
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
+		AllowOrigins: []string{"*"},
+		// AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
