@@ -19,7 +19,7 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
               <ArrowUpDown size={16} className="mr-2 text-indigo-400" /> เกณฑ์การตรวจจับการล้ม (Threshold)
             </label>
             <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-              value={settings.fall_threshold} 
+              value={settings.fall_threshold ?? ""} 
               onChange={(e) => setSettings({...settings, fall_threshold: parseFloat(e.target.value)})} 
             />
             <p className="text-[10px] text-gray-400 mt-1">* ค่าความไวในการตัดสินใจว่าคนล้ม</p>
@@ -31,7 +31,7 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
               <Ruler size={16} className="mr-2 text-indigo-400" /> ความสูงจากพื้น (เมตร)
             </label>
             <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-              value={settings.mount_height} 
+              value={settings.mount_height ?? ""} 
               onChange={(e) => setSettings({...settings, mount_height: parseFloat(e.target.value)})} 
             />
           </div>
@@ -43,7 +43,7 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
                 <Maximize size={16} className="mr-2 text-indigo-400" /> กว้าง (เมตร)
               </label>
               <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-                value={settings.room_width} 
+                value={settings.room_width ?? ""} 
                 onChange={(e) => setSettings({...settings, room_width: parseFloat(e.target.value)})} 
               />
             </div>
@@ -52,7 +52,8 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
                 <Maximize size={16} className="mr-2 text-indigo-400" /> ยาว (เมตร)
               </label>
               <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-                value={settings.room_length} 
+                value={settings.room_length ?? ""} 
+                
                 onChange={(e) => setSettings({...settings, room_length: parseFloat(e.target.value)})} 
               />
             </div>
