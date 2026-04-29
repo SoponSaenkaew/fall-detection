@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react'; // ✨ อาโรน่าเพิ่ม 2 ตัวนี้เข้ามานะคะ
 import { useDashboard } from '@/hooks/useDashboard';
 import DeviceCard from '@/components/Dashboard/DeviceCard';
 import Header from '@/components/Dashboard/Header';
@@ -11,12 +12,12 @@ import {
   EditDeviceModal,
   DeviceSettingsModal 
 } from '@/components/Dashboard/Modals';
-import { Layout, Plus, Trash2, BellRing, Pencil, Settings2 } from 'lucide-react';
+import { Layout, Plus, Trash2, BellRing, Pencil, Settings2, X } from 'lucide-react';
 
 export default function Dashboard() {
-  // ดึง State และ Handler ทั้งหมดมาจาก Custom Hook ที่เราจัดระเบียบไว้ค่ะ ✨
+  // ดึง State และ Handler ทั้งหมดมาจาก Custom Hook ที่เซนเซย์จัดระเบียบไว้ค่ะ ✨
   const {
-    groups, 
+    groups, fetchData,
     showAddModal, setShowAddModal, 
     newGroupName, setNewGroupName,
     showAddDevModal, setShowAddDevModal, 
@@ -34,6 +35,31 @@ export default function Dashboard() {
     handleSaveNotif, handleOpenSettings, handleSaveSettings
   } = useDashboard();
 
+  // ✨ State สำหรับเก็บข้อความแจ้งเตือนฉุกเฉินค่ะ
+  const [alertMsg, setAlertMsg] = useState("");
+
+  // ✨ เปิดท่อ WebSocket ทันทีที่หน้าเว็บโหลดเสร็จ
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8080/ws');
+
+    ws.onopen = () => console.log('เชื่อมต่อ WebSocket กับฐานทัพสำเร็จแล้วค่ะเซนเซย์! 🌐');
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      fetchData();
+      // ถ้าข้อมูลที่ส่งมาคือการล้ม (fall) ให้แสดงแถบแจ้งเตือนทันที!
+      if (data.name === 'fall') {
+        setAlertMsg(`ตรวจพบผู้สูงอายุล้ม! ที่อุปกรณ์รหัส: ${data.device_id} รีบตรวจสอบด่วนค่ะ!`);
+        // เซนเซย์สามารถเพิ่มเสียงแจ้งเตือนตรงนี้ได้ในอนาคตด้วยนะคะ 🔔
+      }
+    };
+
+    return () => {
+      ws.close();
+      console.log('ปิดการเชื่อมต่อ WebSocket เรียบร้อยค่ะ 🔌');
+    };
+  }, []);
+
   // ฟังก์ชันช่วยจัดรูปแบบเวลาให้ดูง่ายค่ะ
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -44,6 +70,23 @@ export default function Dashboard() {
     <div className="p-8 bg-gray-50 min-h-screen">
       {/* 1. Header ส่วนหัวของ Dashboard */}
       <Header onAddGroup={() => setShowAddModal(true)} />
+
+      {/* ✨ แถบแจ้งเตือนฉุกเฉิน (จะโผล่มาเฉพาะตอนที่มีคนล้มเท่านั้นค่ะ!) */}
+      {alertMsg && (
+        <div className="mt-6 mb-2 p-4 bg-red-500 text-white rounded-xl shadow-lg border-2 border-red-600 flex justify-between items-center animate-pulse">
+          <div className="flex items-center">
+            <BellRing className="mr-3" size={24} />
+            <span className="font-bold text-lg">🚨 ฉุกเฉิน: {alertMsg}</span>
+          </div>
+          <button 
+            onClick={() => setAlertMsg("")} 
+            className="p-1 hover:bg-red-600 rounded-lg transition"
+            title="ปิดการแจ้งเตือน"
+          >
+            <X size={24} />
+          </button>
+        </div>
+      )}
 
       {/* 2. ส่วนของ Modals ทั้งหมด (ประกอบร่าง) */}
       
@@ -102,7 +145,7 @@ export default function Dashboard() {
       />
 
       {/* 3. ส่วนแสดงผลกลุ่มและอุปกรณ์ (Main Content) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {groups.map((group) => (
           <div key={group.ID} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative group">
             {/* ปุ่มจัดการกลุ่ม (จะปรากฏเมื่อ Hover) */}

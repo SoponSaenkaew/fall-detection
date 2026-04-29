@@ -20,25 +20,46 @@ type SensorPayload struct {
 func SetupMQTT(brokerURI string, devService *device.Service) mqtt.Client {
 	opts := mqtt.NewClientOptions().AddBroker(brokerURI).SetClientID("go_backend")
 
-	// ตั้งค่าฟังก์ชันที่จะทำงานเมื่อมีข้อความเข้ามา
-	opts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
-		var payload SensorPayload
-		json.Unmarshal(msg.Payload(), &payload)
-
-		// 1. นำข้อมูลไปบันทึกลง DB และส่งแจ้งเตือน LINE/Discord (ใช้ฟังก์ชัน ProcessEvent เดิมได้เลยค่ะ!)
-		devService.ProcessEvent(payload.DeviceID, payload.Type, payload.Name, payload.Value, "")
-
-		// 2. ส่งข้อมูลผ่าน WebSocket ไปให้ Dashboard (Next.js) อัปเดตแบบ Real-time
-		ws.BroadcastEvent(payload)
-		fmt.Println("ได้รับข้อมูลและบรอดแคสต์เรียบร้อย! ✨")
-	})
+	// ✨ 1. เพิ่มระบบรายงานตัวตอนเริ่มเชื่อมต่อ
+	opts.OnConnect = func(c mqtt.Client) {
+		fmt.Println("🌐 [MQTT] Backend เชื่อมต่อกับ Broker สำเร็จแล้วพร้อมลุย!")
+	}
+	opts.OnConnectionLost = func(c mqtt.Client, err error) {
+		fmt.Printf("⚠️ [MQTT] หลุดการเชื่อมต่อ: %v\n", err)
+	}
 
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
 
-	// ตั้ง Topic สำหรับดักฟังอุปกรณ์ ESP32
-	client.Subscribe("sensor/events", 1, nil)
+	// ✨ 2. ผูกฟังก์ชันรับข้อมูลเข้ากับ Topic "sensor/events" ตรงๆ เลย! ชัวร์กว่า 100%
+	token := client.Subscribe("sensor/events", 0, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("\n📩 [MQTT] ได้รับข้อความดิบ:", string(msg.Payload()))
+
+		var payload SensorPayload
+		if err := json.Unmarshal(msg.Payload(), &interface{}{&payload}); err != nil {
+			fmt.Println("❌ [MQTT] แปลงข้อมูล JSON ไม่สำเร็จ:", err)
+			return
+		}
+
+		// ✨ 3. ลองบันทึกลงฐานข้อมูล พร้อมดักจับ Error
+		err := devService.ProcessEvent(payload.DeviceID, payload.Type, payload.Name, payload.Value, "{}")
+		if err != nil {
+			fmt.Println("❌ [MQTT] บันทึกลง DB ไม่สำเร็จ (เซนเซย์เช็ครหัส Device ID ให้ตรงกับหน้าเว็บน้า):", err)
+		} else {
+			fmt.Println("✅ [MQTT] บันทึกลง DB สำเร็จ!")
+		}
+
+		// ✨ 4. บรอดแคสต์เข้าหน้าเว็บ
+		ws.BroadcastEvent(payload)
+		fmt.Println("📢 [MQTT] ส่งสัญญาณไฟกระพริบไปที่หน้า Dashboard แล้ว! ✨")
+	})
+
+	if token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
+
+	fmt.Println("📡 [MQTT] สแตนด์บายรอรับข้อมูลที่ Topic: sensor/events")
 	return client
 }
