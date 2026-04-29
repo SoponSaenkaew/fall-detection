@@ -4,18 +4,40 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <PubSubClient.h> 
 
 // --- การตั้งค่า (Constants) ---
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
-const char* baseUrl = "https://logan-senate-acceptance-mill.trycloudflare.com/api/v1"; 
+const char* baseUrl = "http://192.168.1.92:8080/api/v1"; 
 const char* deviceId = "LD6002C_MASTER_01";
+
+// กำหนด IP ของตู้ไปรษณีย์ MQTT (คอมพิวเตอร์ของเซนเซย์)
+// const char* mqtt_server = "192.168.1.92"; 
+const char* mqtt_server = "broker.hivemq.com";
 
 // --- ตัวแปร Global ---
 extern float fallThreshold;
 extern float mountHeight;
 extern float roomWidth;
 extern float roomLength;
+
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+
+// --- ฟังก์ชันเชื่อมต่อ MQTT ---
+void connectMQTT() {
+    mqttClient.setServer(mqtt_server, 1883);
+    while (!mqttClient.connected()) {
+        Serial.print("\r\n[MQTT] Connecting to Broker...");
+        if (mqttClient.connect(deviceId)) { 
+            Serial.println(" Connected! 🌐");
+        } else {
+            Serial.print(" Failed! Retrying in 5 sec...");
+            delay(5000);
+        }
+    }
+}
 
 // --- ฟังก์ชันดึง Config (GET) ---
 void fetchDeviceSettings() {
@@ -36,7 +58,6 @@ void fetchDeviceSettings() {
             roomWidth     = doc["room_width"];
             roomLength    = doc["room_length"];
             
-            // ✨ ใช้ \r\n เพื่อบังคับให้ขึ้นบรรทัดใหม่แบบชิดซ้ายเป๊ะๆ ค่ะ
             Serial.print("\r\n====================================");
             Serial.print("\r\n   [SYSTEM CONFIGURATION UPDATED]   ");
             Serial.print("\r\n====================================");
@@ -52,32 +73,28 @@ void fetchDeviceSettings() {
     }
 }
 
-// --- ฟังก์ชันส่ง Event (POST) ---
+// --- ฟังก์ชันส่ง Event ผ่าน MQTT 🚀 ---
 void sendEvent(String eventName, String value) {
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        http.begin(String(baseUrl) + "/events");
-        http.setTimeout(3000); // รอแค่ 3 วินาทีพอค่ะ จะได้ไม่หน่วง
-        http.addHeader("Content-Type", "application/json");
-        http.addHeader("Connection", "keep-alive"); // ช่วยให้ส่งครั้งต่อไปไวขึ้นค่ะ
-
-        StaticJsonDocument<200> doc;
-        doc["device_id"] = deviceId;
-        doc["type"] = (eventName == "online") ? "status" : "event";
-        doc["name"] = eventName;
-        doc["value"] = value;
-        doc["metadata"] = "{\"info\": \"PlatformIO Test\"}";
-
-        String json;
-        serializeJson(doc, json);
-        int httpCode = http.POST(json);
-        
-        // ✨ ปรับการแสดงผล Log ให้เรียงบรรทัดสวยงาม
-        Serial.printf("\r\n[EVENT] %-6s | Value: %-10s | Result: %d\r\n", 
-                      eventName.c_str(), value.c_str(), httpCode);
-        
-        http.end();
+    if (!mqttClient.connected()) {
+        connectMQTT();
     }
+    mqttClient.loop(); // สั่งให้ MQTT ทำงาน
+
+    // แพ็กข้อมูลใส่กล่อง JSON
+    StaticJsonDocument<200> doc;
+    doc["device_id"] = deviceId;
+    doc["type"] = (eventName == "online") ? "status" : "event";
+    doc["name"] = eventName;
+    doc["value"] = value;
+    doc["metadata"] = "{}";
+
+    String json;
+    serializeJson(doc, json);
+    
+    bool success = mqttClient.publish("sensor/events", json.c_str());
+    
+    Serial.printf("\r\n[MQTT EVENT] %-6s | Value: %-10s | Success: %d\r\n", 
+                  eventName.c_str(), value.c_str(), success);
 }
 
 #endif

@@ -4,12 +4,13 @@ import (
 	"backend/internal/auth/login"
 	"backend/internal/auth/register"
 	"backend/internal/database"
-	"backend/internal/iot/device" // เพิ่ม
-	"backend/internal/iot/group"  // เพิ่ม
+	"backend/internal/iot/device"
+	"backend/internal/iot/group"
 	"backend/internal/middleware"
+	"backend/internal/mqtt"
+	"backend/internal/ws"
 
 	"github.com/gin-contrib/cors"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,28 +21,39 @@ func main() {
 	}
 
 	// Setup Services & Handlers
+	devService := device.NewService(db)
 	regHandler := register.NewHandler(register.NewService(db))
 	loginHandler := login.NewHandler(login.NewService(db))
+	grpHandler := group.NewHandler(group.NewService(db))
+	devHandler := device.NewHandler(devService)
 
-	grpHandler := group.NewHandler(group.NewService(db))   // เพิ่ม
-	devHandler := device.NewHandler(device.NewService(db)) // เพิ่ม
+	// ✨ จุดสำคัญที่ 1: เปิดระบบกระจายข้อความ WebSocket ให้ทำงานแบบ Background
+	go ws.HandleMessages()
+
+	// ✨ จุดสำคัญที่ 2: เชื่อมต่อ MQTT Broker เพื่อรอรับข้อมูลจาก ESP32
+	// เซนเซย์อย่าลืมเช็ค Address ของ Broker (เช่น tcp://localhost:1883) ให้ตรงกับที่รันใน Docker นะค๊ะ
+	// mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
+	mqttClient := mqtt.SetupMQTT("tcp://broker.hivemq.com:1883", devService)
+
+	defer mqttClient.Disconnect(250)
 
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		// AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
+		AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
 
+	// ✨ จุดสำคัญที่ 3: เพิ่ม Route สำหรับให้หน้าจอ Dashboard (Next.js) มาเชื่อมต่อ WebSocket
+	r.GET("/ws", ws.HandleConnections)
+
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/register", regHandler.Handle)
 		v1.POST("/login", loginHandler.Handle)
 
-		// กลุ่ม API ที่ต้อง Login (ตรวจบัตรผ่าน)
 		protected := v1.Group("/iot").Use(middleware.AuthMiddleware())
 		{
 			// จัดการสถานที่
@@ -57,7 +69,7 @@ func main() {
 			protected.PUT("/devices/settings", devHandler.UpdateSettings)
 			protected.GET("/groups", grpHandler.GetAll)
 
-			// จัดการการแจ้งเตือน (เพิ่ม/แก้ไข/ลบ) - ตัวอย่างนี้ทำแค่เพิ่มนะคะ
+			// จัดการการแจ้งเตือน
 			protected.GET("/notifications", devHandler.GetNotificationConfigs)
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
 
@@ -70,7 +82,7 @@ func main() {
 			})
 		}
 
-		// API สำหรับตัว Device ส่งข้อมูล (ยังไม่ล็อกกุญแจเพื่อให้ Sensor ส่งง่ายค่ะ)
+		// API เดิมที่รับผ่าน HTTP (ยังเก็บไว้เผื่อเซนเซย์อยาก Test ผ่าน Postman ค่ะ)
 		v1.POST("/events", devHandler.ReceiveEvent)
 		v1.GET("/config/:device_id", devHandler.GetSettings)
 	}

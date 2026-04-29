@@ -134,8 +134,8 @@ export const useDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+    // const interval = setInterval(fetchData, 5000);
+    // return () => clearInterval(interval);
   }, []);
 
   // คืนค่าทุกอย่างเพื่อให้หน้า Page นำไปใช้ค่ะ
