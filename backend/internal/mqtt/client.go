@@ -38,7 +38,7 @@ func SetupMQTT(brokerURI string, devService *device.Service) mqtt.Client {
 		fmt.Println("\n📩 [MQTT] ได้รับข้อความดิบ:", string(msg.Payload()))
 
 		var payload SensorPayload
-		if err := json.Unmarshal(msg.Payload(), &interface{}{&payload}); err != nil {
+		if err := json.Unmarshal(msg.Payload(), &payload); err != nil {
 			fmt.Println("❌ [MQTT] แปลงข้อมูล JSON ไม่สำเร็จ:", err)
 			return
 		}

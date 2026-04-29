@@ -32,7 +32,9 @@ func main() {
 
 	// ✨ จุดสำคัญที่ 2: เชื่อมต่อ MQTT Broker เพื่อรอรับข้อมูลจาก ESP32
 	// เซนเซย์อย่าลืมเช็ค Address ของ Broker (เช่น tcp://localhost:1883) ให้ตรงกับที่รันใน Docker นะค๊ะ
-	mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
+	// mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
+	mqttClient := mqtt.SetupMQTT("tcp://broker.hivemq.com:1883", devService)
+
 	defer mqttClient.Disconnect(250)
 
 	r := gin.Default()

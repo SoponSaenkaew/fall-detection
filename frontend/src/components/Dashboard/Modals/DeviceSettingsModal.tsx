@@ -4,6 +4,17 @@ import { X, Settings2, Ruler, ArrowUpDown, Maximize } from 'lucide-react';
 export default function DeviceSettingsModal({ show, onClose, onSubmit, settings, setSettings }: any) {
   if (!show) return null;
 
+  // ✨ ฟังก์ชันช่วยดักจับช่องว่างและแปลงตัวเลขให้ปลอดภัยค่ะ
+  const handleNumberChange = (field: string, value: string) => {
+    setSettings({
+      ...settings,
+      [field]: value === "" ? "" : parseFloat(value)
+    });
+  };
+
+  // ✨ ดักจับค่า NaN ไม่ให้หลุดไปแสดงผล
+  const safeValue = (val: any) => (Number.isNaN(val) ? "" : (val ?? ""));
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <form onSubmit={onSubmit} className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl border-t-4 border-indigo-500 text-left">
@@ -19,8 +30,8 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
               <ArrowUpDown size={16} className="mr-2 text-indigo-400" /> เกณฑ์การตรวจจับการล้ม (Threshold)
             </label>
             <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-              value={settings.fall_threshold ?? ""} 
-              onChange={(e) => setSettings({...settings, fall_threshold: parseFloat(e.target.value)})} 
+              value={safeValue(settings.fall_threshold)} 
+              onChange={(e) => handleNumberChange('fall_threshold', e.target.value)} 
             />
             <p className="text-[10px] text-gray-400 mt-1">* ค่าความไวในการตัดสินใจว่าคนล้ม</p>
           </div>
@@ -31,8 +42,8 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
               <Ruler size={16} className="mr-2 text-indigo-400" /> ความสูงจากพื้น (เมตร)
             </label>
             <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-              value={settings.mount_height ?? ""} 
-              onChange={(e) => setSettings({...settings, mount_height: parseFloat(e.target.value)})} 
+              value={safeValue(settings.mount_height)} 
+              onChange={(e) => handleNumberChange('mount_height', e.target.value)} 
             />
           </div>
 
@@ -43,8 +54,8 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
                 <Maximize size={16} className="mr-2 text-indigo-400" /> กว้าง (เมตร)
               </label>
               <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-                value={settings.room_width ?? ""} 
-                onChange={(e) => setSettings({...settings, room_width: parseFloat(e.target.value)})} 
+                value={safeValue(settings.room_width)} 
+                onChange={(e) => handleNumberChange('room_width', e.target.value)} 
               />
             </div>
             <div>
@@ -52,9 +63,8 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
                 <Maximize size={16} className="mr-2 text-indigo-400" /> ยาว (เมตร)
               </label>
               <input type="number" step="0.1" className="w-full border p-2 rounded-lg" 
-                value={settings.room_length ?? ""} 
-                
-                onChange={(e) => setSettings({...settings, room_length: parseFloat(e.target.value)})} 
+                value={safeValue(settings.room_length)} 
+                onChange={(e) => handleNumberChange('room_length', e.target.value)} 
               />
             </div>
           </div>
