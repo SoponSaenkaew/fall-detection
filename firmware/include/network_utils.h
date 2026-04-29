@@ -8,7 +8,7 @@
 // --- การตั้งค่า (Constants) ---
 const char* ssid = "Wokwi-GUEST";
 const char* password = "";
-const char* baseUrl = "http://rico-concord-mary-beast.trycloudflare.com/api/v1"; 
+const char* baseUrl = "https://logan-senate-acceptance-mill.trycloudflare.com/api/v1"; 
 const char* deviceId = "LD6002C_MASTER_01";
 
 // --- ตัวแปร Global ---
@@ -66,7 +66,7 @@ void sendEvent(String eventName, String value) {
         doc["type"] = (eventName == "online") ? "status" : "event";
         doc["name"] = eventName;
         doc["value"] = value;
-        doc["metadata"] = "PlatformIO Test";
+        doc["metadata"] = "{\"info\": \"PlatformIO Test\"}";
 
         String json;
         serializeJson(doc, json);
