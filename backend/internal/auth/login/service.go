@@ -20,7 +20,7 @@ func NewService(db *gorm.DB) *Service {
 }
 
 func (s *Service) Execute(email, password string) (string, error) { // เปลี่ยนเป็น email
-	// 1. หา User ใน DB ด้วย Email แทนค่ะ
+	// 1. หา User ใน DB ด้วย Email
 	u, err := user.GetUserByEmail(s.db, email)
 	if err != nil {
 		return "", errors.New("ไม่พบผู้ใช้งานที่ใช้ Email นี้ค่ะเซนเซย์")
