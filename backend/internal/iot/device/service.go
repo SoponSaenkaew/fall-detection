@@ -29,6 +29,9 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	if err := s.db.Where("device_id = ?", devID).First(&dev).Error; err != nil {
 		return err
 	}
+	if meta == "" {
+		meta = "{}"
+	}
 
 	// บันทึก Event ลง DB ปกติ
 	event := iot.DeviceEvent{DeviceID: dev.ID, Type: evType, Name: name, Value: val, Metadata: meta}

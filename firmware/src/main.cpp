@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include "network_utils.h"
 
-// กำหนดตัวแปรจริง
+// กำหนดตัวแปรจริง (ผูกกับ extern ใน network_utils.h)
 float fallThreshold = 0.0, mountHeight = 0.0, roomWidth = 0.0, roomLength = 0.0;
 
-// ขาปุ่มกดตามที่ต่อไว้ใน diagram.json
+// ขาปุ่มกดตามที่ต่อไว้ใน diagram.json ของเซนเซย์
 const int btnConfig = 1, btnEnter = 2, btnFall = 4, btnExit = 5, btnOnline = 6;
 
 void setup() {
@@ -20,30 +20,37 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
     Serial.println("\r\nWiFi Connected! ✨");
 
+    // ดึง Config จาก HTTP ทันทีที่เปิดเครื่อง
     fetchDeviceSettings();
 }
 
 void loop() {
-    // ตรวจเช็คปุ่มกดแต่ละอัน
+    // ให้ MQTT สแตนด์บายทำงานอยู่เบื้องหลัง
+    if (WiFi.status() == WL_CONNECTED && !mqttClient.connected()) {
+        connectMQTT();
+    }
+    mqttClient.loop();
+
+    // ตรวจเช็คปุ่มกดแต่ละอัน (จำลองเซ็นเซอร์)
     if (digitalRead(btnConfig) == LOW) { 
-        Serial.println("Action: Fetching Config...");
+        Serial.println("\r\n[BTN] Action: Fetching Config...");
         fetchDeviceSettings(); 
-        delay(500); 
+        delay(1000); // หน่วงเวลาป้องกันการกดซ้ำ
     }
     if (digitalRead(btnEnter) == LOW)  { 
         sendEvent("enter", "user_in"); 
-        delay(500); 
+        delay(1000); 
     }
     if (digitalRead(btnFall) == LOW)   { 
         sendEvent("fall", "detected"); 
-        delay(500); 
+        delay(1000); 
     }
     if (digitalRead(btnExit) == LOW)   { 
         sendEvent("exit", "user_out"); 
-        delay(500); 
+        delay(1000); 
     }
     if (digitalRead(btnOnline) == LOW) { 
         sendEvent("online", "ready"); 
-        delay(500); 
+        delay(1000); 
     }
 }

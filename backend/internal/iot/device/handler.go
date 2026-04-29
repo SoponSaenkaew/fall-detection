@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"backend/internal/iot"
+	"backend/internal/ws"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,6 +58,7 @@ func (h *Handler) ReceiveEvent(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกข้อมูลไม่สำเร็จ"})
 		return
 	}
+	ws.BroadcastEvent(input)
 
 	c.JSON(http.StatusOK, gin.H{"message": "รับข้อมูลเรียบร้อย!"})
 }
