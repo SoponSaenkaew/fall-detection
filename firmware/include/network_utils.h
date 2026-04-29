@@ -13,7 +13,8 @@ const char* baseUrl = "http://192.168.1.92:8080/api/v1";
 const char* deviceId = "LD6002C_MASTER_01";
 
 // กำหนด IP ของตู้ไปรษณีย์ MQTT (คอมพิวเตอร์ของเซนเซย์)
-const char* mqtt_server = "192.168.1.92"; 
+// const char* mqtt_server = "192.168.1.92"; 
+const char* mqtt_server = "broker.hivemq.com";
 
 // --- ตัวแปร Global ---
 extern float fallThreshold;
