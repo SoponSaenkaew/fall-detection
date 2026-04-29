@@ -1,7 +1,8 @@
 version: '3.9'
+
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: postgres_db
     environment:
       POSTGRES_USER: user
@@ -12,5 +13,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
 volumes:
   postgres_data:
+  mosquitto_data:
+  mosquitto_log:
