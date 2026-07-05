@@ -43,7 +43,8 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	case "status":
 		updates["status"] = name // เช่น online / offline
 	case "event":
-		updates["latest_event"] = name // เช่น fall / enter / exit
+		updates["latest_event"] = name          // เช่น fall / enter / exit
+		updates["latest_event_metadata"] = meta // บันทึก Metadata ล่าสุดด้วย
 	}
 
 	// ✨ ถ้ามีการล้ม ให้ดึง Config การแจ้งเตือนมาทำงาน
@@ -55,7 +56,7 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 		s.db.Where("group_id = ? AND enabled = ?", dev.GroupID, true).Find(&configs)
 
 		for _, cfg := range configs {
-			msg := "เซนเซย์คะ! มีคนล้มในห้อง " + dev.Name
+			msg := "[แจ้งเตือนระบบตรวจจับการล้ม] ตรวจพบเหตุการณ์การล้มในพื้นที่: " + dev.Name
 			switch cfg.Type {
 			case "line":
 				// ส่งผ่าน LINE Messaging API

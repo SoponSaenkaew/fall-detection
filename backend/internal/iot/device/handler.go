@@ -68,7 +68,7 @@ func (h *Handler) ReceiveEvent(c *gin.Context) {
 func (h *Handler) AddNotificationConfig(c *gin.Context) {
 	var input iot.NotificationConfig
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ถูกต้องนะคะเซนเซย์"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ถูกต้อง"})
 		return
 	}
 
@@ -115,13 +115,13 @@ func (h *Handler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "อัปเดตข้อมูลอุปกรณ์ไม่สำเร็จ"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "แก้ไขข้อมูลเซนเซอร์เรียบร้อยแล้วค่ะ! ✨"})
+	c.JSON(http.StatusOK, gin.H{"message": "แก้ไขข้อมูลเซนเซอร์เรียบร้อยแล้ว"})
 }
 
 func (h *Handler) UpdateSettings(c *gin.Context) {
 	var input iot.DeviceSetting
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลการตั้งค่าไม่ถูกต้องค่ะเซนเซย์"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลการตั้งค่าไม่ถูกต้อง"})
 		return
 	}
 
@@ -129,7 +129,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกค่าพารามิเตอร์ไม่สำเร็จ"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "อัปเดตเกณฑ์การตรวจจับเรียบร้อยแล้วค่ะ! ✨"})
+	c.JSON(http.StatusOK, gin.H{"message": "อัปเดตเกณฑ์การตรวจจับเรียบร้อยแล้ว"})
 }
 
 func (h *Handler) GetSettings(c *gin.Context) {

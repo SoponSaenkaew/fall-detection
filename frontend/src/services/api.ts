@@ -1,10 +1,7 @@
 import axios from 'axios';
 
-const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  headers: { Authorization: `Bearer ${token}` }
+  baseURL: process.env.NEXT_PUBLIC_API_URL
 });
 
 export const groupService = {

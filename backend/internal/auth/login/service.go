@@ -19,17 +19,17 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
-func (s *Service) Execute(email, password string) (string, error) { // เปลี่ยนเป็น email
+func (s *Service) Execute(email, password string) (string, error) { // เปลี่ยนมาตรวจสอบด้วย email
 	// 1. หา User ใน DB ด้วย Email
 	u, err := user.GetUserByEmail(s.db, email)
 	if err != nil {
-		return "", errors.New("ไม่พบผู้ใช้งานที่ใช้ Email นี้ค่ะเซนเซย์")
+		return "", errors.New("ไม่พบผู้ใช้งานที่ใช้อีเมลนี้ในระบบ")
 	}
 
 	// 2. เช็ค Password (เทียบตัวที่ส่งมากับตัวที่ Hash ใน DB)
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 	if err != nil {
-		return "", errors.New("รหัสผ่านไม่ถูกต้องนะคะ")
+		return "", errors.New("รหัสผ่านไม่ถูกต้อง")
 	}
 
 	// 3. สร้าง JWT Token

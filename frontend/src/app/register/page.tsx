@@ -12,7 +12,7 @@ export default function RegisterPage() {
     try {
       // ส่งข้อมูลไปที่ v1.POST("/register", regHandler.Handle)
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, form);
-      alert("ลงทะเบียนเรียบร้อย! ✨");
+      alert("ลงทะเบียนเรียบร้อยแล้ว");
       router.push('/login');
     } catch (err: any) {
       alert(err.response?.data?.error || "สมัครสมาชิกไม่สำเร็จ");
@@ -22,7 +22,7 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <form onSubmit={handleSubmit} className="p-8 bg-white shadow-md rounded-lg w-full max-w-md border border-blue-100">
-        <h1 className="text-2xl font-bold mb-6 text-blue-600">สมัครสมาชิกนะเซนเซย์!</h1>
+        <h1 className="text-2xl font-bold mb-6 text-blue-600">สมัครสมาชิก</h1>
         <input 
           type="email" placeholder="Email" required
           className="w-full p-2 mb-4 border rounded"

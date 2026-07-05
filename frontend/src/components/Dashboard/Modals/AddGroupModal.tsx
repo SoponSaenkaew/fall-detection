@@ -15,7 +15,7 @@ export default function AddGroupModal({ isOpen, onClose, onSubmit, value, onChan
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 text-left">
       <form onSubmit={onSubmit} className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl border-t-4 border-blue-500">
         <div className="flex justify-between mb-4 italic text-blue-600">
-          <h3 className="text-xl font-bold">สร้างสถานที่ใหม่นะเซนเซย์! 🏠</h3>
+          <h3 className="text-xl font-bold">สร้างสถานที่ใหม่ 🏠</h3>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-black"><X /></button>
         </div>
         <input 
@@ -26,7 +26,7 @@ export default function AddGroupModal({ isOpen, onClose, onSubmit, value, onChan
           onChange={(e) => onChange(e.target.value)} 
           required 
         />
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">ยืนยัน ✨</button>
+        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition">ยืนยัน</button>
       </form>
     </div>
   );

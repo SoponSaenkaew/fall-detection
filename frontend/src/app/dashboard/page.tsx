@@ -15,7 +15,7 @@ import {
 import { Layout, Plus, Trash2, BellRing, Pencil, Settings2, X } from 'lucide-react';
 
 export default function Dashboard() {
-  // ดึง State และ Handler ทั้งหมดมาจาก Custom Hook ที่เซนเซย์จัดระเบียบไว้ค่ะ ✨
+  // ดึงข้อมูลสถานะและตัวจัดการเหตุการณ์ทั้งหมดจาก Custom Hook
   const {
     groups, fetchData,
     showAddModal, setShowAddModal, 
@@ -42,21 +42,21 @@ export default function Dashboard() {
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8080/ws');
 
-    ws.onopen = () => console.log('เชื่อมต่อ WebSocket กับฐานทัพสำเร็จแล้วค่ะเซนเซย์! 🌐');
+    ws.onopen = () => console.log('เชื่อมต่อ WebSocket สำเร็จ');
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       fetchData();
       // ถ้าข้อมูลที่ส่งมาคือการล้ม (fall) ให้แสดงแถบแจ้งเตือนทันที!
       if (data.name === 'fall') {
-        setAlertMsg(`ตรวจพบผู้สูงอายุล้ม! ที่อุปกรณ์รหัส: ${data.device_id} รีบตรวจสอบด่วนค่ะ!`);
-        // เซนเซย์สามารถเพิ่มเสียงแจ้งเตือนตรงนี้ได้ในอนาคตด้วยนะคะ 🔔
+        setAlertMsg(`ตรวจพบเหตุการณ์การล้มจากอุปกรณ์รหัส: ${data.device_id} โปรดตรวจสอบโดยด่วน`);
+        // สามารถเพิ่มเติมระบบเสียงแจ้งเตือนที่นี่ในอนาคต
       }
     };
 
     return () => {
       ws.close();
-      console.log('ปิดการเชื่อมต่อ WebSocket เรียบร้อยค่ะ 🔌');
+      console.log('ปิดการเชื่อมต่อ WebSocket เรียบร้อยแล้ว');
     };
   }, []);
 

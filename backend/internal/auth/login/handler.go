@@ -17,12 +17,12 @@ func NewHandler(s *Service) *Handler {
 // internal/auth/login/handler.go
 func (h *Handler) Handle(c *gin.Context) {
 	var input struct {
-		Email    string `json:"email" binding:"required,email"` // เพิ่มการเช็ค format email ด้วยค่ะ
+		Email    string `json:"email" binding:"required,email"` // ตรวจสอบรูปแบบอีเมล
 		Password string `json:"password" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "กรุณากรอก Email ให้ถูกต้องนะเซนเซย์!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "กรุณากรอกอีเมลให้ถูกต้อง"})
 		return
 	}
 

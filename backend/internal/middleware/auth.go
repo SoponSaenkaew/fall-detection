@@ -14,8 +14,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 1. ดึง Authorization Header ออกมา (รูปแบบคือ "Bearer <token>")
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "กรุณาใส่ Token ด้วยนะเซนเซย์!"})
-			c.Abort() // หยุดการทำงานทันที ไม่ให้ไปต่อค่ะ
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "กรุณาระบุ Token เพื่อเข้าใช้งาน"})
+			c.Abort() // ยกเลิกการประมวลผลการทำงานทันที
 			return
 		}
 
