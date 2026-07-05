@@ -78,10 +78,10 @@ func sendLine(LineToken, LineGroupID, message string) {
 	}
 	defer resp.Body.Close()
 
-	// เช็คผลลัพธ์นิดนึงค่ะเซนเซย์
+	// ตรวจสอบผลลัพธ์การส่งการแจ้งเตือน
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("LINE API returned non-200 status: %d\n", resp.StatusCode)
 	} else {
-		fmt.Println("Successfully sent LINE notification! ✨")
+		fmt.Println("Successfully sent LINE notification")
 	}
 }

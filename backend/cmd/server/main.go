@@ -6,8 +6,9 @@ import (
 	"backend/internal/database"
 	"backend/internal/iot/device"
 	"backend/internal/iot/group"
-	"backend/internal/middleware"
+	"backend/internal/iot"
 	"backend/internal/mqtt"
+	"backend/internal/user"
 	"backend/internal/ws"
 
 	"github.com/gin-contrib/cors"
@@ -17,7 +18,80 @@ import (
 func main() {
 	db, err := database.ConnectDB()
 	if err != nil {
-		panic("เชื่อมต่อ Database ไม่ได้ค่ะเซนเซย์!: " + err.Error())
+		panic("ไม่สามารถเชื่อมต่อฐานข้อมูลได้: " + err.Error())
+	}
+
+	// สร้างผู้ใช้ดีฟอลต์หากยังไม่มี
+	var defaultUser user.User
+	if err := db.Where("email = ?", "admin@example.com").First(&defaultUser).Error; err != nil {
+		defaultUser = user.User{
+			Email:    "admin@example.com",
+			Username: "ผู้ดูแลระบบ (System Admin)",
+			Password: "system_password",
+		}
+		db.Create(&defaultUser)
+	}
+
+	// ลงทะเบียนข้อมูลตัวอย่างสำหรับโหมดเดโม หากตารางกลุ่มยังว่างอยู่
+	var groupCount int64
+	db.Model(&iot.Group{}).Count(&groupCount)
+	if groupCount == 0 {
+		g1 := iot.Group{Name: "อาคาร 1", UserID: defaultUser.ID}
+		db.Create(&g1)
+
+		// 1. สร้างห้องน้ำสำหรับอาคาร 1 (ห้องน้ำ 101 - 105)
+		// ห้องน้ำ 101: สถานะล้มฉุกเฉิน (มีพิกัดล้มใกล้ชักโครก)
+		db.Create(&iot.Device{
+			DeviceID:            "LD2450_B1_R101",
+			Name:                "ห้องน้ำ 101",
+			GroupID:             g1.ID,
+			Status:              "online",
+			LatestEvent:         "fall",
+			LatestEventMetadata: `{"fall_x": -0.3, "fall_y": 1.5}`,
+		})
+		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R101", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+
+		// ห้องน้ำ 102: สถานะปกติ (มีประวัติเส้นทางการเดินเข้าหาชักโครกและเดินกลับออกมา)
+		db.Create(&iot.Device{
+			DeviceID:            "LD2450_B1_R102",
+			Name:                "ห้องน้ำ 102",
+			GroupID:             g1.ID,
+			Status:              "online",
+			LatestEvent:         "exit",
+			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.0, 2.8], [-0.4, 2.0], [-0.2, 1.2], [0.0, 0.6], [0.0, 1.2], [0.2, 2.2], [0.0, 3.8]]}`,
+		})
+		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R102", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+
+		// ห้องน้ำ 103: สถานะมีคนอยู่ (กำลังใช้งาน)
+		db.Create(&iot.Device{
+			DeviceID:    "LD2450_B1_R103",
+			Name:        "ห้องน้ำ 103",
+			GroupID:     g1.ID,
+			Status:      "online",
+			LatestEvent: "enter",
+		})
+		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R103", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+
+		// ห้องน้ำ 104: สถานะปกติ (มีประวัติเส้นทางสั้นๆ และเดินกลับออกมา)
+		db.Create(&iot.Device{
+			DeviceID:            "LD2450_B1_R104",
+			Name:                "ห้องน้ำ 104",
+			GroupID:             g1.ID,
+			Status:              "online",
+			LatestEvent:         "exit",
+			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.2, 2.5], [0.0, 1.5], [0.0, 0.7], [0.0, 1.5], [-0.2, 2.5], [0.0, 3.8]]}`,
+		})
+		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R104", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+
+		// ห้องน้ำ 105: สถานะเครื่องปิด (Offline)
+		db.Create(&iot.Device{
+			DeviceID:    "LD2450_B1_R105",
+			Name:        "ห้องน้ำ 105",
+			GroupID:     g1.ID,
+			Status:      "offline",
+			LatestEvent: "exit",
+		})
+		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R105", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 	}
 
 	// Setup Services & Handlers
@@ -31,9 +105,9 @@ func main() {
 	go ws.HandleMessages()
 
 	// ✨ จุดสำคัญที่ 2: เชื่อมต่อ MQTT Broker เพื่อรอรับข้อมูลจาก ESP32
-	// เซนเซย์อย่าลืมเช็ค Address ของ Broker (เช่น tcp://localhost:1883) ให้ตรงกับที่รันใน Docker นะค๊ะ
-	// mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
-	mqttClient := mqtt.SetupMQTT("tcp://broker.hivemq.com:1883", devService)
+	// ตรวจสอบที่อยู่ (Address) ของ MQTT Broker (เช่น tcp://localhost:1883) ให้ตรงกับที่รันใน Docker
+	mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
+	// mqttClient := mqtt.SetupMQTT("tcp://broker.hivemq.com:1883", devService)
 
 	defer mqttClient.Disconnect(250)
 
@@ -54,7 +128,7 @@ func main() {
 		v1.POST("/register", regHandler.Handle)
 		v1.POST("/login", loginHandler.Handle)
 
-		protected := v1.Group("/iot").Use(middleware.AuthMiddleware())
+		protected := v1.Group("/iot")
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
@@ -74,15 +148,14 @@ func main() {
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
 
 			protected.GET("/profile", func(c *gin.Context) {
-				userID, _ := c.Get("user_id")
 				c.JSON(200, gin.H{
-					"message": "ยินดีต้อนรับเข้าสู่ห้องส่วนตัวค่ะเซนเซย์!",
-					"your_id": userID,
+					"message": "ยินดีต้อนรับเข้าสู่ระบบข้อมูลส่วนตัว",
+					"your_id": "ผู้ดูแลระบบ (System Admin)",
 				})
 			})
 		}
 
-		// API เดิมที่รับผ่าน HTTP (ยังเก็บไว้เผื่อเซนเซย์อยาก Test ผ่าน Postman ค่ะ)
+		// API เดิมที่รับผ่าน HTTP สำหรับทดสอบผ่านเครื่องมือภายนอก (เช่น Postman)
 		v1.POST("/events", devHandler.ReceiveEvent)
 		v1.GET("/config/:device_id", devHandler.GetSettings)
 	}

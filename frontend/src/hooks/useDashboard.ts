@@ -30,7 +30,7 @@ export const useDashboard = () => {
     try {
       const res = await groupService.getAll();
       setGroups(res.data);
-    } catch (err) { console.error("ดึงข้อมูลไม่สำเร็จค่ะเซนเซย์"); }
+    } catch (err) { console.error("ดึงข้อมูลไม่สำเร็จ"); }
   };
 
 
@@ -64,15 +64,15 @@ export const useDashboard = () => {
       setNewGroupName("");
       setShowAddModal(false);
       fetchData();
-    } catch (err) { alert("สร้างกลุ่มไม่สำเร็จค่ะ"); }
+    } catch (err) { alert("สร้างกลุ่มไม่สำเร็จ"); }
   };
 
   const handleDeleteGroup = async (id: number) => {
-    if (!confirm("เซนเซย์แน่ใจนะค๊ะว่าจะลบกลุ่มนี้?")) return;
+    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบกลุ่มนี้?")) return;
     try {
       await groupService.delete(id);
       fetchData();
-    } catch (err) { alert("ลบไม่สำเร็จค่ะ"); }
+    } catch (err) { alert("ลบไม่สำเร็จ"); }
   };
 
   const handleAddDevice = async (e: React.FormEvent) => {
@@ -82,7 +82,7 @@ export const useDashboard = () => {
       setNewDev({ device_id: "", name: "" });
       setShowAddDevModal({ show: false, groupId: null });
       fetchData();
-    } catch (err) { alert("ลงทะเบียนไม่สำเร็จค่ะ"); }
+    } catch (err) { alert("ลงทะเบียนไม่สำเร็จ"); }
   };
 
   const handleDeleteDevice = async (deviceId: string) => {
@@ -127,9 +127,9 @@ export const useDashboard = () => {
     e.preventDefault();
     try {
       await deviceService.updateSettings(currentSettings);
-      alert("บันทึกค่าพารามิเตอร์สำเร็จ! ✨");
+      alert("บันทึกค่าพารามิเตอร์สำเร็จ");
       setShowSettings({ show: false, deviceId: "" });
-    } catch (err) { alert("บันทึกไม่สำเร็จค่ะเซนเซย์"); }
+    } catch (err) { alert("บันทึกไม่สำเร็จ"); }
   };
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export const useDashboard = () => {
     // return () => clearInterval(interval);
   }, []);
 
-  // คืนค่าทุกอย่างเพื่อให้หน้า Page นำไปใช้ค่ะ
+  // คืนค่าทุกอย่างเพื่อให้หน้า Page นำไปใช้
   return {
     // ... คืนค่าเดิมทั้งหมด ...
     groups, fetchData,

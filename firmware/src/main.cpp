@@ -4,7 +4,7 @@
 // กำหนดตัวแปรจริง (ผูกกับ extern ใน network_utils.h)
 float fallThreshold = 0.0, mountHeight = 0.0, roomWidth = 0.0, roomLength = 0.0;
 
-// ขาปุ่มกดตามที่ต่อไว้ใน diagram.json ของเซนเซย์
+// ขาปุ่มกดตามการกำหนดพินในไฟล์ diagram.json
 const int btnConfig = 1, btnEnter = 2, btnFall = 4, btnExit = 5, btnOnline = 6;
 
 void setup() {

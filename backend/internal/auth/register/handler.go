@@ -22,7 +22,7 @@ func (h *Handler) Handle(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ครบค่ะเซนเซย์!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลไม่ครบถ้วน กรุณากรอกข้อมูลให้ครบถ้วน"})
 		return
 	}
 
@@ -31,5 +31,5 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "ลงทะเบียนเรียบร้อย! ✨"})
+	c.JSON(http.StatusCreated, gin.H{"message": "ลงทะเบียนสำเร็จ"})
 }

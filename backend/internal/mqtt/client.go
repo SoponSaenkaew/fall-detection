@@ -46,14 +46,14 @@ func SetupMQTT(brokerURI string, devService *device.Service) mqtt.Client {
 		// ✨ 3. ลองบันทึกลงฐานข้อมูล พร้อมดักจับ Error
 		err := devService.ProcessEvent(payload.DeviceID, payload.Type, payload.Name, payload.Value, "{}")
 		if err != nil {
-			fmt.Println("❌ [MQTT] บันทึกลง DB ไม่สำเร็จ (เซนเซย์เช็ครหัส Device ID ให้ตรงกับหน้าเว็บน้า):", err)
+			fmt.Println("❌ [MQTT] ไม่สามารถบันทึกลงฐานข้อมูลได้ (กรุณาตรวจสอบว่ารหัส Device ID ตรงกับระบบ):", err)
 		} else {
-			fmt.Println("✅ [MQTT] บันทึกลง DB สำเร็จ!")
+			fmt.Println("✅ [MQTT] บันทึกข้อมูลลงฐานข้อมูลเรียบร้อยแล้ว")
 		}
 
 		// ✨ 4. บรอดแคสต์เข้าหน้าเว็บ
 		ws.BroadcastEvent(payload)
-		fmt.Println("📢 [MQTT] ส่งสัญญาณไฟกระพริบไปที่หน้า Dashboard แล้ว! ✨")
+		fmt.Println("📢 [MQTT] ส่งข้อมูลไปยัง Dashboard เรียบร้อยแล้ว")
 	})
 
 	if token.Wait() && token.Error() != nil {

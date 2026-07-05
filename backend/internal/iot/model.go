@@ -14,11 +14,12 @@ type Group struct {
 
 type Device struct {
 	gorm.Model
-	DeviceID    string `gorm:"unique;not null" json:"device_id"` // รหัส Hardware ID ของเซนเซอร์
-	Name        string `json:"name"`                             // ชื่อเรียก เช่น "ห้องนอน 1"
-	Status      string `gorm:"default:'online'" json:"status"`   // สถานะเครื่อง
-	LatestEvent string `json:"latest_event"`                     // ค่าที่อาจจะเก็บไว้ เช่น "fall", "enter", "exit" หรือค่าอื่นๆ ที่ส่งมาจากอุปกรณ์
-	GroupID     uint   `json:"group_id"`                         // สังกัดกลุ่มไหน
+	DeviceID            string `gorm:"unique;not null" json:"device_id"` // รหัส Hardware ID ของเซนเซอร์
+	Name                string `json:"name"`                             // ชื่อเรียก เช่น "ห้องนอน 1"
+	Status              string `gorm:"default:'online'" json:"status"`   // สถานะเครื่อง
+	LatestEvent         string `json:"latest_event"`                     // ค่าที่อาจจะเก็บไว้ เช่น "fall", "enter", "exit" หรือค่าอื่นๆ ที่ส่งมาจากอุปกรณ์
+	LatestEventMetadata string `json:"latest_event_metadata"`            // เก็บข้อมูล Metadata ล่าสุด เช่น พิกัดหรือเส้นทางเดิน
+	GroupID             uint   `json:"group_id"`                         // สังกัดกลุ่มไหน
 }
 
 type DeviceEvent struct {

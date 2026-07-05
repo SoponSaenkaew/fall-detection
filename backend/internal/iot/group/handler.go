@@ -19,40 +19,24 @@ func (h *Handler) Create(c *gin.Context) {
 		Name string `json:"name" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ชื่อกลุ่มห้ามว่างนะคะเซนเซย์!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "กรุณาระบุชื่อกลุ่ม"})
 		return
 	}
 
-	// แก้ไขการดึง userID ตรงนี้ค่ะ
-	val, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "ไม่พบข้อมูลผู้ใช้งาน"})
-		return
-	}
-
-	// แปลงจาก interface{} (ที่อาจเป็น float64) มาเป็น uint อย่างปลอดภัย
-	var userID uint
-	switch v := val.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "ประเภทข้อมูล UserID ไม่ถูกต้อง"})
-		return
-	}
+	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
+	userID := uint(1)
 
 	if err := h.service.Create(input.Name, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้างกลุ่มไม่สำเร็จค่ะ: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้างกลุ่มไม่สำเร็จ: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว! ✨"})
+	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว"})
 }
 
 // เพิ่มใน backend/internal/iot/group/handler.go
 func (h *Handler) GetAll(c *gin.Context) {
-	val, _ := c.Get("user_id")
-	userID := uint(val.(float64)) // หรือใช้ switch-case ที่เซนเซย์แก้ไว้คราวก่อนค่ะ
+	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
+	userID := uint(1)
 
 	groups, err := h.service.GetAll(userID)
 	if err != nil {
@@ -64,8 +48,8 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 func (h *Handler) Delete(c *gin.Context) {
 	idStr := c.Param("id") // รับ ID จาก URL
-	val, _ := c.Get("user_id")
-	userID := uint(val.(float64))
+	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
+	userID := uint(1)
 
 	if err := h.service.Delete(uint(castID(idStr)), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลบกลุ่มไม่สำเร็จค่ะ"})
@@ -91,8 +75,8 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	val, _ := c.Get("user_id")
-	userID := uint(val.(float64))
+	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
+	userID := uint(1)
 
 	if err := h.service.Update(uint(castID(idStr)), userID, input.Name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "แก้ไขชื่อกลุ่มไม่สำเร็จค่ะ"})
