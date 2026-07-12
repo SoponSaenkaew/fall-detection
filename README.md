@@ -1,131 +1,158 @@
-# 🚨 ระบบตรวจจับการล้มอัจฉริยะ (Smart Fall Detection System)
+# 🚨 ระบบตรวจจับการล้มอัจฉริยะ (Smart Fall Detection System) — รุ่น Demo No-Auth 🌟
 
-ระบบประมวลผลและตรวจจับการล้มแบบ Full-Stack IoT ที่ทำงานร่วมกับเซนเซอร์ mmWave Radar (LD6002C) และไมโครคอนโทรลเลอร์ ESP32-S3 เพื่อส่งข้อมูลแจ้งเตือนแบบเรียลไทม์ (Real-time) ไปยังเว็บแอปพลิเคชัน (Dashboard) และระบบแจ้งเตือนภายนอก เช่น LINE Notify และ Webhook (Discord/Slack)
+ยินดีต้อนรับสู่โปรเจกต์ **ระบบตรวจจับการล้มอัจฉริยะ (Smart Fall Detection System)** ในสาขา **`demo-no-auth`** 
+
+สาขานี้ถูกพัฒนาขึ้นมาเป็นพิเศษสำหรับการ**นำเสนองาน (Live Demo)** และการทดสอบระบบอย่างรวดเร็ว โดยมีการปรับปรุงโครงสร้างจากสาขาหลักดังนี้:
+1. **ระบบ Simple No-Auth**: ปิดระบบการตรวจสอบสิทธิ์ผ่าน JWT Token ชั่วคราว ทำให้เปิดหน้าจอขึ้นมาก็เริ่มทำงานได้ทันทีโดยไม่ต้อง Login
+2. **ระบบสร้างข้อมูลตัวอย่างอัตโนมัติ (Auto-Seeding)**: ทันทีที่รันระบบหลังบ้าน ระบบจะสร้างอาคารจำลองพร้อมห้องน้ำ 5 ห้องที่มีสถานะและเส้นทางเดินที่แตกต่างกันในฐานข้อมูลโดยอัตโนมัติ
+3. **ระบบจำลองผังห้อง 2D (2D Room Floorplan & Path Tracking)**: หน้าจอติดตามห้องแบบเรียลไทม์ด้วย HTML5 Canvas วาดจำลองโถสุขภัณฑ์, ระยะกรอบห้อง (1 เมตรต่อกริด), ทิศทางเซนเซอร์เรดาร์, เส้นทางการเดิน (Path Tracking), และจุดพิกัดการล้ม (Fall Coordinate)
+4. **โปรแกรมจำลองของฝั่ง Backend (CLI Event Simulator)**: เครื่องมือจำลองบอร์ดสำหรับยิงสัญญาณและพิกัดการเดินหรือการล้ม เพื่อทดสอบการอัปเดตแบบเรียลไทม์
 
 ---
 
 ## 📂 โครงสร้างโฟลเดอร์ของโปรเจกต์ (Project Structure)
 
-โปรเจกต์นี้ได้รับการจัดหมวดหมู่โค้ดออกเป็นส่วนต่าง ๆ อย่างชัดเจนเพื่อความสะดวกในการพัฒนาและการปรับใช้งาน:
-
 ```text
 fall-detection/
-├── backend/            # ระบบ API และระบบจัดการข้อมูล (พัฒนาด้วย Go/Gin)
-├── frontend/           # ส่วนหน้าต่างแสดงผล Dashboard และควบคุมอุปกรณ์ (พัฒนาด้วย Next.js)
-├── firmware/           # โค้ดควบคุม Hardware ไมโครคอนโทรลเลอร์ ESP32-S3 (พัฒนาด้วย PlatformIO)
-├── board-esp32s3/      # ซอร์สโค้ดในรูปแบบของ Arduino IDE (.ino) สำหรับบอร์ด ESP32-S3
-├── mosquitto/          # โฟลเดอร์การตั้งค่า MQTT Broker (Mosquitto)
-├── docs/               # เอกสารประกอบการพัฒนา คู่มือเซนเซอร์ และคู่มือโปรโตคอลการสื่อสาร
-└── docker-compose.yml  # สคริปต์ Docker Compose สำหรับเปิดฐานข้อมูล PostgreSQL และ MQTT Broker
+├── backend/            # ระบบ API จัดการข้อมูล (Go/Gin) และ CLI Simulator
+│   ├── cmd/
+│   │   ├── server/     # ซอร์สโค้ดฝั่ง Server (ตัวหลักสำหรับเชื่อมฐานข้อมูล, WS และ MQTT)
+│   │   └── simulator/  # [NEW] โปรแกรมจำลองการส่งข้อมูลบอร์ดผ่าน CLI Menu
+│   └── internal/       # แพ็คเกจการประมวลผลภายใน (Database, MQTT, WebSocket, IoT)
+├── frontend/           # ระบบ Dashboard ตรวจสอบสถานะ (Next.js/TS/Tailwind)
+│   └── src/
+│       ├── app/
+│       │   ├── dashboard/   # หน้าจอตั้งค่าระยะติดตั้งและขอบเขตเซนเซอร์ (สำหรับแอดมิน)
+│       │   └── buildings/   # [NEW] หน้าจอติดตามสถานะห้องและจำลองผัง 2D เรียลไทม์
+│       └── components/      # ส่วน UI ย่อยต่าง ๆ
+├── board-esp32s3/      # ซอร์สโค้ดควบคุมบอร์ด ESP32-S3 รูปแบบ (.ino) สำหรับ Arduino IDE
+├── mosquitto/          # ไฟล์ตั้งค่าและสิทธิ์ของ MQTT Broker (Mosquitto)
+├── docs/               # เอกสารข้อมูลทางเทคนิคและโปรโตคอลเซนเซอร์เรดาร์ mmWave
+└── docker-compose.yml  # สคริปต์ Docker สำหรับเปิดฐานข้อมูล PostgreSQL และ MQTT Broker
 ```
 
 ---
 
-## 🛠️ เทคโนโลยีและเครื่องมือที่เลือกใช้ (Technology Stack)
+## 🛠️ รายละเอียดฟีเจอร์เด่นในรุ่น Demo
 
-### **Hardware & Simulation**
-*   **MCU**: ESP32-S3
-*   **Sensor**: mmWave Radar (LD6002C)
-*   **Simulator**: Wokwi Simulator สำหรับการจำลองตรรกะการกดปุ่มและตรวจจับพฤติกรรม
+### 1. ระบบจำลองผังห้อง 2D (2D Room & Path Tracking Visualizer)
+เมื่อเข้าสู่หน้าจอ **ผังอาคาร (Monitor)** ที่พาร์ท `/buildings` ระบบจะแสดงผังห้องของแต่ละอุปกรณ์โดยใช้ Canvas:
+* **Grid 1m**: เส้นกริดประระยะห่างละ 1 เมตรตามขนาดห้องที่ตั้งค่าไว้จริง
+* **Radar Sensor**: ไอคอนเซนเซอร์ติดตั้งอยู่บนกึ่งกลางของผนังด้านบน
+* **Sanitary Ware (Toilet)**: จำลองตรรกะพิกัดของโถชักโครกภายในห้องน้ำ
+* **Path Tracking (เส้นสีน้ำเงิน)**: วาดเส้นการเคลื่อนไหวของผู้ใช้งานที่เดินในห้องแบบเรียลไทม์
+* **Fall Detection (จุดสีแดง 🚨)**: เมื่อตรวจจับพบเหตุการณ์ล้ม จะมีจุดแดงระเบิดออกระบุตำแหน่งพิกัด X, Y ที่ล้มอย่างชัดเจน พร้อมป็อปอัปแจ้งเตือนสีแดงกะพริบทั่วหน้าจอ
 
-### **Backend (ระบบหลังบ้าน)**
-*   **Language**: Go (Golang) รุ่น 1.21 ขึ้นไป
-*   **Web Framework**: Gin Gonic
-*   **Database ORM**: GORM (PostgreSQL Driver)
-*   **Authentication**: JWT (JSON Web Tokens)
-*   **Database**: PostgreSQL 18 (รันผ่าน Docker container)
-
-### **Frontend (ระบบหน้าบ้าน)**
-*   **Framework**: Next.js 16 (React 19 / TypeScript)
-*   **CSS Style**: Tailwind CSS v4 & PostCSS
-*   **Icon Library**: Lucide React
-*   **HTTP Client**: Axios
-
-### **Connectivity & Protocols**
-*   **Data Streaming**: WebSockets (สำหรับการอัปเดต Dashboard แบบเรียลไทม์)
-*   **IoT Protocol**: MQTT (สำหรับการเชื่อมต่อและรับข้อมูลสถานะจาก ESP32-S3)
-*   **API Protocol**: HTTP / JSON
+### 2. ข้อมูลจำลองตั้งต้น (Initial Seed Data)
+เมื่อเปิดรัน Backend ครั้งแรก ระบบจะสร้างข้อมูลจำลองให้กับ `admin@example.com` (user_id = 1) ทันที:
+* **อาคาร 1** (Group 1)
+  * **ห้องน้ำ 101**: สถานะ `online` | เหตุการณ์ล่าสุด: `fall` (ล้มฉุกเฉิน พิกัดล้มใกล้ชักโครก `[-0.3, 1.5]`)
+  * **ห้องน้ำ 102**: สถานะ `online` | เหตุการณ์ล่าสุด: `exit` (ปกติ มีพิกัดการเดินแบบวนเข้า-ออก)
+  * **ห้องน้ำ 103**: สถานะ `online` | เหตุการณ์ล่าสุด: `enter` (มีคนอยู่ในห้องน้ำกำลังใช้งาน)
+  * **ห้องน้ำ 104**: สถานะ `online` | เหตุการณ์ล่าสุด: `exit` (ปกติ มีพิกัดการเดินแบบเส้นตรงสั้น ๆ)
+  * **ห้องน้ำ 105**: สถานะ `offline` | บอร์ดปิดการเชื่อมต่อ
 
 ---
 
-## 🚀 ขั้นตอนการติดตั้งและการรันระบบ (Setup & Running)
+## 🚀 ขั้นตอนการเริ่มรันระบบเดโม (Quick Start Guide)
 
-เพื่อให้ระบบทั้งหมดทำงานประสานกัน เซนเซย์สามารถรันตามขั้นตอนดังต่อไปนี้:
+เซนเซย์สามารถรันระบบทดสอบได้ตามขั้นตอนดังต่อไปนี้:
 
-### **1. เริ่มการทำงานของโครงสร้างพื้นฐาน (Docker Infrastructure)**
-ใช้ Docker Compose เพื่อเปิดการทำงานของฐานข้อมูล PostgreSQL และ MQTT Broker:
-
+### **ขั้นตอนที่ 1: รัน Docker Infrastructure**
+เปิดใช้งานระบบฐานข้อมูล PostgreSQL และ MQTT Broker:
 ```bash
-# สั่งเปิดบริการ PostgreSQL และ MQTT Broker ในแบบ Background
 docker compose up -d
 ```
-*   **Postgres Database**: ทำงานที่พอร์ต `5432`
-*   **MQTT Broker**: ทำงานที่พอร์ต `1883`
+* **PostgreSQL DB** ทำงานที่พอร์ต `5432`
+* **MQTT Broker (Mosquitto)** ทำงานที่พอร์ต `1883`
 
 ---
 
-### **2. ตั้งค่าและเริ่มระบบหลังบ้าน (Backend API)**
-1.  ย้ายเข้าไปยังโฟลเดอร์ `backend`:
-    ```bash
-    cd backend
-    ```
-2.  ติดตั้งไลบรารีและอัปเดตโมดูลของ Go:
-    ```bash
-    go mod tidy
-    ```
-3.  ตรวจสอบไฟล์การตั้งค่าระบบคอนฟิกใน [.env](file:///d:/Final%20project/fall-detection/backend/.env) (ระบบตั้งค่าเริ่มต้นให้เชื่อมต่อฐานข้อมูลใน Docker เรียบร้อยแล้ว)
-4.  รันเซิร์ฟเวอร์หลังบ้าน:
-    ```bash
-    go run cmd/server/main.go
-    ```
-    *   เซิร์ฟเวอร์จะเปิดใช้งานที่ที่อยู่: `http://localhost:8080`
-    *   ตารางฐานข้อมูลทั้งหมดจะถูกสร้างขึ้นอัตโนมัติผ่าน GORM AutoMigrate ในการรันครั้งแรก
+### **ขั้นตอนที่ 2: รันระบบหลังบ้าน (Backend API)**
+1. ย้ายเข้าโฟลเดอร์ `backend`:
+   ```bash
+   cd backend
+   ```
+2. ติดตั้งโมดูล Go:
+   ```bash
+   go mod tidy
+   ```
+3. รันเซิร์ฟเวอร์หลัก:
+   ```bash
+   go run cmd/server/main.go
+   ```
+   * เซิร์ฟเวอร์จะเชื่อมต่อฐานข้อมูล Docker อัตโนมัติและสตรีมข้อมูลทางพอร์ต `8080`
+   * ระบบจะทำการ Auto-Seed ข้อมูลห้องน้ำ 101 - 105 ให้ทันทีเมื่อตรวจพบว่าไม่มีข้อมูลกลุ่ม
 
 ---
 
-### **3. ตั้งค่าและเริ่มระบบหน้าบ้าน (Frontend Dashboard)**
-1.  ย้ายเข้าไปยังโฟลเดอร์ `frontend`:
-    ```bash
-    cd frontend
-    ```
-2.  ติดตั้งไลบรารีและ Node Modules ที่จำเป็น:
-    ```bash
-    npm install
-    ```
-3.  ตรวจสอบหรือตั้งค่าปลายทางของ API ในไฟล์ `.env.local` (ระบุตัวแปร `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1`)
-4.  เริ่มการทำงานของ Next.js Dev Server:
-    ```bash
-    npm run dev
-    ```
-    *   เข้าใช้งาน Dashboard ผ่านเว็บเบราว์เซอร์ได้ที่: `http://localhost:3000`
+### **ขั้นตอนที่ 3: รันระบบหน้าบ้าน (Frontend Dashboard)**
+1. ย้ายเข้าโฟลเดอร์ `frontend`:
+   ```bash
+   cd frontend
+   ```
+2. ติดตั้งไลบรารี:
+   ```bash
+   npm install
+   ```
+3. รันโปรเจกต์ Next.js:
+   ```bash
+   npm run dev
+   ```
+4. เปิดเว็บเบราว์เซอร์แล้วเข้าไปที่: [http://localhost:3000/buildings](http://localhost:3000/buildings)
+   * คุณจะเข้าสู่ **หน้าจอผังอาคาร (Monitor)** โดยไม่ต้องทำการ Login หรือกรอกรหัสผ่านใด ๆ ทั้งสิ้น!
+   * สามารถสลับระหว่าง **ผังอาคาร (Monitor)** และ **ตั้งค่าอุปกรณ์ (Admin)** ได้ที่แถบเมนูด้านบนซ้าย
 
 ---
 
-### **4. การรันการทดสอบและซิมูเลเตอร์เฟิร์มแวร์ (Firmware Simulation)**
-1.  เปิดโฟลเดอร์ `firmware` ด้วยโปรแกรม VS Code ที่ติดตั้งปลั๊กอิน **PlatformIO IDE** และ **Wokwi Simulator** เรียบร้อยแล้ว
-2.  ตรวจสอบหรือระบุข้อมูลการเชื่อมต่อ เช่น ที่อยู่ IP ของ API และ MQTT Broker ในไฟล์ `firmware/include/network_utils.h`
-3.  กดคอมไพล์โค้ด (Build) บน PlatformIO เพื่อติดตั้งบอร์ดไลบรารีให้เสร็จสิ้น
-4.  รันการจำลองอุปกรณ์ผ่านคำสั่ง `Wokwi: Start Simulator` บน VS Code เพื่อทดสอบการส่งสัญญาณการล้ม, การก้าวเข้า/ออกจากห้องจำลอง โดยใช้พินและปุ่มกดจำลองในวงจรของไฟล์ `diagram.json`
+### **ขั้นตอนที่ 4: รันระบบจำลองเหตุการณ์ผ่าน Command Line (CLI Simulator)**
+เพื่อสตรีมข้อมูลจำลองเหตุการณ์ต่าง ๆ เข้ามาโดยไม่ต้องใช้บอร์ดจริง:
+1. เปิด Command Prompt / Terminal ใหม่แล้วย้ายเข้าโฟลเดอร์ `backend`:
+   ```bash
+   cd backend
+   ```
+2. รันคำสั่งเปิดเครื่องมือจำลอง:
+   ```bash
+   go run cmd/simulator/main.go
+   ```
+3. หน้าจอเทอร์มินัลจะปรากฏเมนูให้กดเลือกเลขสถานการณ์ต่าง ๆ:
+   ```text
+   เลือกเหตุการณ์ที่ต้องการส่งจำลองไปยังเซิร์ฟเวอร์:
+   1) จำลองผู้สูงอายุเดินเข้าห้อง (Event: enter)
+   2) จำลองผู้สูงอายุล้มลง! (Event: fall) **[แจ้งเตือน LINE]**
+   3) จำลองผู้สูงอายุเดินออกจากห้อง (Event: exit)
+   4) จำลองอุปกรณ์ออนไลน์ (Status: online)
+   5) จำลองอุปกรณ์ออฟไลน์ (Status: offline)
+   6) รันสถานการณ์จำลองต่อเนื่อง (Enter -> Fall -> Exit)
+   0) ออกจากโปรแกรมจำลอง
+   ```
+4. ทดลองกดเลือกข้อ **`6`** จากนั้นเปิดหน้าจอเว็บเบราว์เซอร์ดูความเปลี่ยนแปลงแบบเรียลไทม์!
 
 ---
 
-## 🛣️ รายการ API Endpoints ที่สำคัญ (Main API Endpoints)
+## 🛰️ ซอร์สโค้ดสำหรับบอร์ด ESP32-S3 (Arduino IDE)
 
-| Method | Endpoint | Description | Auth Required |
+หากมีฮาร์ดแวร์จริงหรือต้องการอัปโหลดโค้ดเข้าบอร์ด ESP32-S3:
+1. เข้าไปที่โฟลเดอร์ [board-esp32s3](file:///d:/Final%20project/fall-detection/board-esp32s3) และเปิดไฟล์ `board.ino` ด้วยโปรแกรม Arduino IDE
+2. ปรับแต่งชื่อ WiFi (`ssid`) และรหัสผ่าน (`password`) ในโค้ด
+3. อัปโหลดโค้ดไปยังบอร์ดจริง โดยรองรับการอัปเกรดซอร์สโค้ดแบบไร้สาย (ArduinoOTA)
+
+---
+
+## 🛣️ สรุปเส้นทางการส่งข้อมูล API (No-Auth API Reference)
+
+ในรุ่น Demo นี้ ทุก Endpoint ที่เคยมี JWT Guard ถูกปลดออกทั้งหมด:
+
+| Method | Route | Description | ตัวอย่าง Payload |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/api/v1/register` | ลงทะเบียนบัญชีผู้ใช้งานใหม่ | No |
-| **POST** | `/api/v1/login` | เข้าสู่ระบบและรับ JWT Token | No |
-| **GET** | `/api/v1/iot/groups` | ดึงข้อมูลกลุ่มสถานที่ทั้งหมดของผู้ใช้ | Yes (Bearer Token) |
-| **POST** | `/api/v1/iot/groups` | สร้างสถานที่สำหรับการจัดการอุปกรณ์ใหม่ | Yes (Bearer Token) |
-| **POST** | `/api/v1/iot/devices` | ลงทะเบียนอุปกรณ์ตรวจจับ mmWave เข้าสู่ระบบ | Yes (Bearer Token) |
-| **GET** | `/api/v1/iot/devices/:device_id/settings` | ดึงพารามิเตอร์การตั้งค่าของเซนเซอร์ | Yes (Bearer Token) |
-| **PUT** | `/api/v1/iot/devices/settings` | ปรับการตั้งค่าระยะเซนเซอร์และค่าเกณฑ์ตรวจจับล้ม | Yes (Bearer Token) |
-| **POST** | `/api/v1/iot/notifications` | เพิ่มปลายทางการรับการแจ้งเตือน (LINE / Webhook) | Yes (Bearer Token) |
+| **GET** | `/ws` | เปิดการเชื่อมต่อเรียลไทม์ (WebSockets) | (สำหรับ Dashboard รับข้อมูลแบบเรียลไทม์) |
+| **GET** | `/api/v1/iot/groups` | ดึงข้อมูลสถานที่ทั้งหมด (ใช้สิทธิ์ user_id=1) | - |
+| **GET** | `/api/v1/iot/devices/:device_id/settings` | ดึงการตั้งค่าห้อง ขนาด กว้าง x ยาว และค่าเกณฑ์ล้ม | - |
+| **PUT** | `/api/v1/iot/devices/settings` | แก้ไขค่าเกณฑ์การล้มและระยะจำกัดเซนเซอร์ | `{"device_id": "...", "fall_threshold": 0.6}` |
+| **POST** | `/api/v1/events` | บอร์ดส่งสัญญาณเหตุการณ์ (ล้ม, เข้า, ออก) แบบ HTTP | `{"device_id": "...", "event_type": "fall", "metadata": "{\"fall_x\": -0.2, \"fall_y\": 1.4}"}` |
+| **POST** | `/api/v1/iot/notifications` | เพิ่ม Token ของ LINE Notify หรือ Webhook ปลายทาง | `{"name": "LINE ส่วนตัว", "type": "line", "token": "..."}` |
 
 ---
 
-## 📄 คู่มือด้านเอกสารข้อมูลทางเทคนิค (Documentation)
-เซนเซย์สามารถเข้าศึกษาคู่มือการสื่อสาร โปรโตคอล และสเปกพินของเซนเซอร์เรดาร์เพิ่มเติมได้จากโฟลเดอร์ `docs/` ซึ่งมีเอกสารดังต่อไปนี้:
-*   [HLK-LD6002C specification.pdf](file:///d:/Final%20project/fall-detection/docs/HLK-LD6002C%20Fall%20detection%20radar%20module%20specification_V1.0.pdf) - เอกสารข้อมูลทางเทคนิคของเซนเซอร์ LD6002C
-*   [HLK-LD6002C Communication protocol.pdf](file:///d:/Final%20project/fall-detection/docs/HLK-LD6002C%20Fall%20detection%20Communication%20protocol.pdf) - รายละเอียดโปรโตคอลการสื่อสารข้อมูลการตรวจจับการล้ม
-*   [HLK-LD2450 Instruction Manual.pdf](file:///d:/Final%20project/fall-detection/docs/HLK-LD2450-Instruction-Manual.pdf) - คู่มือแนะนำโครงสร้างคำสั่งและการตรวจจับตำแหน่งวัตถุ
+## 📄 แหล่งข้อมูลและคู่มือเซนเซอร์เพิ่มเติม
+ดูคู่มือเอกสารอ้างอิงของ mmWave Radar โมดูล LD6002C เพิ่มเติมได้ในโฟลเดอร์ `docs/` เพื่อทำความเข้าใจตรรกะตำแหน่งพิกัด X, Y และระยะกวาดมุมสัญญาณเรดาร์ 🛰️
