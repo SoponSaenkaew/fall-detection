@@ -1,8 +1,17 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL
+// ตั้งค่าให้ใช้พาร์ทสัมพัทธ์ /api/v1 เป็นค่าเริ่มต้นหากไม่ได้ประกาศใน Env (ช่วยให้ทำ Static Export ได้ราบรื่น)
+const apiBaseURL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+
+export const api = axios.create({
+  baseURL: apiBaseURL
 });
+
+export const authService = {
+  login: (form: any) => api.post('/login', form),
+  register: (form: any) => api.post('/register', form),
+  getProfile: () => api.get('/iot/profile'),
+};
 
 export const groupService = {
   getAll: () => api.get('/iot/groups'),
@@ -22,3 +31,5 @@ export const deviceService = {
 export const notificationService = {
   save: (data: any) => api.post('/iot/notifications', data),
 };
+
+export default api;

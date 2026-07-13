@@ -13,14 +13,21 @@ import (
 	"time"
 )
 
+var baseURL = "http://localhost:8080/api/v1"
+
 const (
-	baseURL    = "http://localhost:8080/api/v1"
 	testEmail  = "simulated_user@example.com"
 	testUser   = "simulated_user"
 	testPass   = "Password123!"
 	deviceID   = "LD6002C_TEST_01"
 	deviceName = "Sensor ห้องทดสอบจำลอง"
 )
+
+func init() {
+	if envURL := os.Getenv("SIMULATOR_BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+}
 
 type Client struct {
 	httpClient *http.Client

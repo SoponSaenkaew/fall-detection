@@ -40,7 +40,12 @@ export default function Dashboard() {
 
   // ✨ เปิดท่อ WebSocket ทันทีที่หน้าเว็บโหลดเสร็จ
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/ws');
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'ws://localhost:8080/ws'
+      : `${wsProtocol}//${wsHost}/ws`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => console.log('เชื่อมต่อ WebSocket สำเร็จ');
 

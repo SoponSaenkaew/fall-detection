@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: prod_mqtt_broker
+    restart: always
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_prod_data:/mosquitto/data
+      - mosquitto_prod_log:/mosquitto/log
+    networks:
+      - proxy-network
+
+  backend:
+    image: ${ACR_NAME}.azurecr.io/fall-detection-backend:latest
+    container_name: prod_go_backend
+    restart: always
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-fall_detection_db}
+      DB_SSLMODE: require
+      MQTT_BROKER_URI: tcp://mosquitto:1883
+      ALLOWED_ORIGINS: "*"
+    depends_on:
+      - mosquitto
+    networks:
+      - proxy-network
+
+  frontend:
+    image: ${ACR_NAME}.azurecr.io/fall-detection-frontend:latest
+    container_name: prod_nextjs_frontend
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    external: true
+
+volumes:
+  mosquitto_prod_data:
+  mosquitto_prod_log:
