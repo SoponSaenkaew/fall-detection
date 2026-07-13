@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import axios from 'axios';
+import { authService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -11,7 +11,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       // เรียกใช้ v1.POST("/login", loginHandler.Handle)
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, form);
+      const res = await authService.login(form);
       // เก็บ Token ลงใน localStorage เพื่อใช้ผ่าน AuthMiddleware
       localStorage.setItem('token', res.data.token);
       router.push('/dashboard');

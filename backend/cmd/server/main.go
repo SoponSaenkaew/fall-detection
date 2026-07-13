@@ -10,6 +10,8 @@ import (
 	"backend/internal/mqtt"
 	"backend/internal/user"
 	"backend/internal/ws"
+	"os"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -105,20 +107,44 @@ func main() {
 	go ws.HandleMessages()
 
 	// ✨ จุดสำคัญที่ 2: เชื่อมต่อ MQTT Broker เพื่อรอรับข้อมูลจาก ESP32
-	// ตรวจสอบที่อยู่ (Address) ของ MQTT Broker (เช่น tcp://localhost:1883) ให้ตรงกับที่รันใน Docker
-	mqttClient := mqtt.SetupMQTT("tcp://localhost:1883", devService)
-	// mqttClient := mqtt.SetupMQTT("tcp://broker.hivemq.com:1883", devService)
+	// อ่านค่าที่อยู่ Broker จาก Environment Variable (ดีฟอลต์เป็น localhost:1883)
+	mqttBrokerURI := os.Getenv("MQTT_BROKER_URI")
+	if mqttBrokerURI == "" {
+		mqttBrokerURI = "tcp://localhost:1883"
+	}
+	mqttClient := mqtt.SetupMQTT(mqttBrokerURI, devService)
 
 	defer mqttClient.Disconnect(250)
 
+	// อ่านค่า Allowed Origins สำหรับ CORS จาก Environment Variable
+	allowedOriginsEnv := os.Getenv("ALLOWED_ORIGINS")
+	allowedOrigins := []string{"http://localhost:3000"}
+	if allowedOriginsEnv != "" {
+		if allowedOriginsEnv == "*" {
+			allowedOrigins = []string{"*"}
+		} else {
+			allowedOrigins = strings.Split(allowedOriginsEnv, ",")
+		}
+	}
+
 	r := gin.Default()
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // พอร์ตของ Next.js
+	
+	// ตั้งค่า CORS Configuration
+	corsConfig := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
-	}))
+	}
+	
+	if len(allowedOrigins) > 0 && allowedOrigins[0] == "*" {
+		corsConfig.AllowAllOrigins = true
+		corsConfig.AllowCredentials = false // เบราว์เซอร์ไม่อนุญาตให้ใช้ AllowCredentials ร่วมกับ wildcard '*'
+	} else {
+		corsConfig.AllowOrigins = allowedOrigins
+	}
+	
+	r.Use(cors.New(corsConfig))
 
 	// ✨ จุดสำคัญที่ 3: เพิ่ม Route สำหรับให้หน้าจอ Dashboard (Next.js) มาเชื่อมต่อ WebSocket
 	r.GET("/ws", ws.HandleConnections)

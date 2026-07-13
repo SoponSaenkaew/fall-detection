@@ -31,7 +31,12 @@ export default function BuildingsPage() {
   // ตรวจจับเหตุการณ์เรียลไทม์ผ่าน WebSocket
   useEffect(() => {
     fetchData();
-    const ws = new WebSocket('ws://localhost:8080/ws');
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    const wsUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'ws://localhost:8080/ws'
+      : `${wsProtocol}//${wsHost}/ws`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => console.log('เชื่อมต่อ WebSocket สำหรับบอร์ดสำเร็จ');
     ws.onmessage = (event) => {

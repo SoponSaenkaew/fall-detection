@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import axios from 'axios';
+import { authService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
@@ -11,7 +11,7 @@ export default function RegisterPage() {
     e.preventDefault();
     try {
       // ส่งข้อมูลไปที่ v1.POST("/register", regHandler.Handle)
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, form);
+      await authService.register(form);
       alert("ลงทะเบียนเรียบร้อยแล้ว");
       router.push('/login');
     } catch (err: any) {

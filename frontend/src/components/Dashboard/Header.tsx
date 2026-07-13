@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { Plus, UserCircle, Mail } from 'lucide-react'; 
-import axios from 'axios';
+import { authService } from '@/services/api';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -24,7 +24,7 @@ export default function Header({ onAddGroup }: HeaderProps) {
     // 2. ดึงข้อมูลโปรไฟล์ผู้ใช้งานจากระบบหลังบ้าน
     const fetchProfile = async () => {
       try {
-        const res = await axios.get('http://localhost:8080/api/v1/iot/profile');
+        const res = await authService.getProfile();
         // สมมติว่า API ส่งกลับมาเป็น { your_id: "ชื่อผู้ใช้", email: "..." }
         setUserData({
           name: res.data.your_id || "User",
