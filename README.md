@@ -139,6 +139,41 @@ docker compose up -d
 
 ---
 
+## ☁️ การติดตั้งระบบบนคลาวด์ Azure (Production Deployment)
+
+ระบบเดโมและบอร์ดจริงสามารถเชื่อมต่อผ่านหน้าเว็บไซต์หลักที่เปิดบริการจริงบนคลาวด์:
+*   **ลิงก์ระบบหน้าบ้าน (Dashboard Real-time):** [https://fall-detection.sopon-project.me/buildings](https://fall-detection.sopon-project.me/buildings)
+
+### **สถาปัตยกรรมบนระบบ Production**
+*   **คลาวด์เซิร์ฟเวอร์ (Azure VM B1s):** ระบบปฏิบัติการ Ubuntu (1 vCPU, 1 GiB RAM) มีการตั้งค่าหน่วยความจำเสมือน (Swap File) ขนาด 4 GiB เพื่อความเสถียรของระบบ
+*   **บริการฐานข้อมูลคลาวด์ (Azure Database for PostgreSQL):** Flexible Server (`sopon-postgres.postgres.database.azure.com` พอร์ต 5432) บังคับเชื่อมต่อแบบปลอดภัยผ่าน SSL (`sslmode=require`)
+*   **คลังจัดเก็บอิมเมจ (Azure Container Registry - ACR):** จัดเก็บ Docker Image ไว้ที่ `soponproject.azurecr.io`
+*   **การจัดการช่องทางและใบรับรอง (Reverse Proxy & SSL):** ใช้ **Nginx Proxy** (`~/nginx-proxy/` บน VM) ผูกใบรับรองความปลอดภัย HTTPS (SSL) ของ Let's Encrypt ผ่าน Certbot บนโดเมน `fall-detection.sopon-project.me`
+
+### **ขั้นตอนการพัฒนาและอัปเดตระบบ (Deployment Workflow)**
+1. **เขียนโค้ดและทดสอบ:** พัฒนาและแก้ไขซอร์สโค้ดบนเครื่องคอมพิวเตอร์ของคุณจนผ่านการทดสอบ
+2. **คอมไพล์เป็น Docker Image:**
+    ```bash
+    # คอมไพล์ฝั่งหลังบ้าน
+    docker build -t soponproject.azurecr.io/fall-detection-backend:latest ./backend
+
+    # คอมไพล์ฝั่งหน้าบ้าน
+    docker build -t soponproject.azurecr.io/fall-detection-frontend:latest ./frontend
+    ```
+3. **อัปโหลด Image ขึ้นคลัง ACR:**
+    ```bash
+    docker push soponproject.azurecr.io/fall-detection-backend:latest
+    docker push soponproject.azurecr.io/fall-detection-frontend:latest
+    ```
+4. **ดึงข้อมูลเพื่อรันอัปเดตบน VM (ผ่าน SSH):**
+    ```bash
+    cd ~/fall-detection
+    docker compose pull
+    docker compose up -d
+    ```
+
+---
+
 ## 🛣️ สรุปเส้นทางการส่งข้อมูล API (No-Auth API Reference)
 
 ในรุ่น Demo นี้ ทุก Endpoint ที่เคยมี JWT Guard ถูกปลดออกทั้งหมด:
