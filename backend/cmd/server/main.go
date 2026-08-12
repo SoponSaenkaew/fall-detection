@@ -44,56 +44,56 @@ func main() {
 		// 1. สร้างห้องน้ำสำหรับอาคาร 1 (ห้องน้ำ 101 - 105)
 		// ห้องน้ำ 101: สถานะล้มฉุกเฉิน (มีพิกัดล้มใกล้ชักโครก)
 		db.Create(&iot.Device{
-			DeviceID:            "LD2450_B1_R101",
+			DeviceID:            "B1_R101",
 			Name:                "ห้องน้ำ 101",
 			GroupID:             g1.ID,
 			Status:              "online",
 			LatestEvent:         "fall",
 			LatestEventMetadata: `{"fall_x": -0.3, "fall_y": 1.5}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R101", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R101", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 
 		// ห้องน้ำ 102: สถานะปกติ (มีประวัติเส้นทางการเดินเข้าหาชักโครกและเดินกลับออกมา)
 		db.Create(&iot.Device{
-			DeviceID:            "LD2450_B1_R102",
+			DeviceID:            "B1_R102",
 			Name:                "ห้องน้ำ 102",
 			GroupID:             g1.ID,
 			Status:              "online",
 			LatestEvent:         "exit",
 			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.0, 2.8], [-0.4, 2.0], [-0.2, 1.2], [0.0, 0.6], [0.0, 1.2], [0.2, 2.2], [0.0, 3.8]]}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R102", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R102", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 
 		// ห้องน้ำ 103: สถานะมีคนอยู่ (กำลังใช้งาน)
 		db.Create(&iot.Device{
-			DeviceID:    "LD2450_B1_R103",
+			DeviceID:    "B1_R103",
 			Name:        "ห้องน้ำ 103",
 			GroupID:     g1.ID,
 			Status:      "online",
 			LatestEvent: "enter",
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R103", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R103", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 
 		// ห้องน้ำ 104: สถานะปกติ (มีประวัติเส้นทางสั้นๆ และเดินกลับออกมา)
 		db.Create(&iot.Device{
-			DeviceID:            "LD2450_B1_R104",
+			DeviceID:            "B1_R104",
 			Name:                "ห้องน้ำ 104",
 			GroupID:             g1.ID,
 			Status:              "online",
 			LatestEvent:         "exit",
 			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.2, 2.5], [0.0, 1.5], [0.0, 0.7], [0.0, 1.5], [-0.2, 2.5], [0.0, 3.8]]}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R104", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R104", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 
 		// ห้องน้ำ 105: สถานะเครื่องปิด (Offline)
 		db.Create(&iot.Device{
-			DeviceID:    "LD2450_B1_R105",
+			DeviceID:    "B1_R105",
 			Name:        "ห้องน้ำ 105",
 			GroupID:     g1.ID,
 			Status:      "offline",
 			LatestEvent: "exit",
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "LD2450_B1_R105", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R105", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
 	}
 
 	// Setup Services & Handlers
