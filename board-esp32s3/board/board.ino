@@ -133,15 +133,17 @@ const char* mqtt_topic = "sensor/events";
 // --- การตั้งค่าสำหรับเซนเซอร์ HLK-LD6002C (mmWave Radar - ตรวจจับการล้ม) ---
 #define USE_LD6002C true      // เปิดใช้งานการอ่านค่าจากเซนเซอร์ HLK-LD6002C
 // #define USE_LD6002C false      // เปิดใช้งานการอ่านค่าจากเซนเซอร์ HLK-LD6002C
-#define RADAR_RX_PIN 17       // ขา RX ของ ESP32 (ต่อกับ TX0 ของเรดาร์)
-#define RADAR_TX_PIN 18       // ขา TX ของ ESP32 (ต่อกับ RX0 ของเรดาร์)
+#define RADAR_RX_PIN 18       // ขา RX ของ ESP32 (ต่อกับ TX0 ของเรดาร์)
+#define RADAR_TX_PIN 17       // ขา TX ของ ESP32 (ต่อกับ RX0 ของเรดาร์)
 
 // --- การตั้งค่าสำหรับเซนเซอร์ HLK-LD2410C (mmWave Radar - ตรวจจับคนเข้า-ออก) ---
 #define USE_LD2410C true      // เปิดใช้งานการตรวจจับคนเข้า-ออกด้วยเซนเซอร์ HLK-LD2410C (ผ่านขา OUT)
-#define LD2410_OUT_PIN 2      // ขา OUT ของ HLK-LD2410C (ต่อกับ GPIO 2 ของ ESP32-S3)
+#define LD2410_OUT_PIN 16     // ขา OUT ของ HLK-LD2410C (ต่อกับ GPIO 16 ของ ESP32-S3)
 const unsigned long presence_timeout = 5000; // เวลาหน่วงกรณีไม่พบการเคลื่อนไหว (มิลลิวินาที) ก่อนปรับเป็นสถานะห้องว่าง (exit) (ปรับเป็น 10 วินาทีเพื่อความเสถียรในการทดสอบ)
 
 // ================= HARDWARE CONFIGURATION =================
+#define BUZZER_PIN 15                     // ขาพินควบคุม Buzzer (ต่อเข้าขา IN ของ Relay/MOSFET)
+
 // กำหนดขา Pin สำหรับต่อปุ่มกดแบบจำลองสถานะ (ต่อขากลางลง GND และอีกขาเข้ากับ Pin บอร์ด)
 const int BUTTON_ENTER_PIN = 4;   // ปุ่มกดเพื่อส่งสถานะ: "กำลังใช้งาน" (enter)
 const int BUTTON_FALL_PIN  = 5;   // ปุ่มกดเพื่อส่งสถานะ: "คนล้ม!!! ⚠️" (fall)
@@ -164,9 +166,13 @@ unsigned long last_presence_time = 0; // จับเวลาล่าสุด
 bool fall_alerted_this_session = false; // ตัวแปรป้องกันการแจ้งเตือนล้มซ้ำในรอบการใช้งานเดียวกัน (ล้มแล้วเตือนรอบเดียวจนกว่าคนจะออกจากห้อง)
 
 // ตัวแปรและค่าพารามิเตอร์ระบบยืนยันการล้มด้วยเวลา (Fall Time Confirmation)
-const unsigned long fall_confirmation_delay = 0; // ระยะเวลาที่ต้องล้มค้างเพื่อยืนยันล้มจริง (มิลลิวินาที)
+const unsigned long fall_confirmation_delay = 2000; // ระยะเวลาที่ต้องตรวจพบล้มค้างเพื่อยืนยันล้มจริง (2 วินาที) ป้องกัน Noise หลอก
 unsigned long fall_start_time = 0;                  // จับเวลาวินาทีที่เริ่มมีแนวโน้มการล้ม
 bool is_falling_candidate = false;                  // บอกว่าตรวจพบสัญญาณล้มชั่วคราวและกำลังอยู่ในช่วงนับถอยหลังยืนยัน
+
+const unsigned long fall_recovery_delay = 2500;     // ระยะเวลาที่ต้องยืนตัวตรงเพื่อยืนยันว่าลุกขึ้นแล้ว (2.5 วินาที)
+unsigned long fall_recovery_start_time = 0;
+bool is_recovering_candidate = false;
 
 // ตัวแปรสำหรับการดึงข้อมูลการตั้งค่าจากเว็บ
 float fall_threshold = 0.5;   // เกณฑ์การตรวจจับการล้ม
@@ -559,6 +565,10 @@ void setup() {
   pinMode(BUTTON_FALL_PIN, INPUT_PULLUP);
   pinMode(BUTTON_EXIT_PIN, INPUT_PULLUP);
 
+  // ตั้งค่าพินควบคุม Buzzer
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, HIGH); // สั่ง HIGH เพื่อปิดรีเลย์แบบ Low Trigger เริ่มต้นป้องกันเสียงดังขณะเปิดเครื่อง
+
   connectWiFi();
 
   // ซิงค์เวลาจากอินเทอร์เน็ตผ่าน NTP Server และตั้งค่าโซนเวลาประเทศไทย (UTC+7)
@@ -944,16 +954,25 @@ void loop() {
   // --- อ่านสถานะปุ่มกด (Active Low: ปุ่มถูกกดเมื่อสถานะเป็น LOW) ---
   if (digitalRead(BUTTON_ENTER_PIN) == LOW) {
     current_event = "enter";
+    fall_alerted_this_session = false;
+    is_falling_candidate = false;
+    is_recovering_candidate = false;
     sendEvent("event", "enter", "กำลังใช้งาน");
     delay(500); // ป้องกันปุ่มเบิ้ล (Debounce)
   }
   else if (digitalRead(BUTTON_FALL_PIN) == LOW) {
     current_event = "fall";
+    fall_alerted_this_session = true;
+    is_falling_candidate = false;
     sendEvent("event", "fall", "ตรวจพบคนล้ม");
     delay(500);
   }
   else if (digitalRead(BUTTON_EXIT_PIN) == LOW) {
     current_event = "exit";
+    fall_alerted_this_session = false;
+    is_falling_candidate = false;
+    is_recovering_candidate = false;
+    fall_start_time = 0;
     sendEvent("event", "exit", "ว่าง");
     delay(500);
   }
@@ -989,24 +1008,31 @@ void updateRGBStatus() {
     return;
   }
 
-  // 3. แสดงสีตามสถานะเซนเซอร์/การใช้งานห้องน้ำ
+  // 3. แสดงสีตามสถานะเซนเซอร์/การใช้งานห้องน้ำ และควบคุม Buzzer
   if (current_event == "enter") {
     // มีคนเข้าใช้งานห้องน้ำ -> ไฟสีฟ้าครามค้าง (Cyan/Blue)
     setRGBColor(0, 100, 200);
+    digitalWrite(BUZZER_PIN, HIGH); // ปิดรีเลย์แบบ Low Trigger (ไม่มีเสียงเตือน)
   } 
   else if (current_event == "fall") {
-    // ตรวจพบเหตุฉุกเฉิน คนล้ม!!! -> ไฟสีแดงกะพริบถี่ ๆ แจ้งเตือนอันตราย
+    // ตรวจพบเหตุฉุกเฉิน คนล้ม!!! -> ไฟสีแดงกะพริบถี่ ๆ แจ้งเตือนอันตราย และเปิดเสียงเตือนเป็นจังหวะตามไฟกะพริบ
     unsigned long current_time = millis();
     if (current_time - last_flash_time >= 200) {
       last_flash_time = current_time;
       flash_state = !flash_state;
-      if (flash_state) setRGBColor(255, 0, 0);
-      else setRGBColor(0, 0, 0);
+      if (flash_state) {
+        setRGBColor(255, 0, 0);
+        digitalWrite(BUZZER_PIN, LOW); // สั่ง LOW เพื่อเปิดรีเลย์แบบ Low Trigger (เสียงดัง)
+      } else {
+        setRGBColor(0, 0, 0);
+        digitalWrite(BUZZER_PIN, HIGH);  // สั่ง HIGH เพื่อปิดรีเลย์แบบ Low Trigger (เสียงดับ)
+      }
     }
   } 
   else {
     // ห้องว่าง ปลอดภัยปกติ -> ไฟสีเขียวค้าง
     setRGBColor(0, 150, 0);
+    digitalWrite(BUZZER_PIN, HIGH); // ปิดรีเลย์แบบ Low Trigger (ไม่มีเสียงเตือน)
   }
 }
 
@@ -1154,8 +1180,9 @@ void processFilteredHeight(float input_val, String &target_event, String &displa
     Serial.printf("📊 [RADAR HEIGHT] Current Target Height: %.2f m\n", filtered_h);
   }
 
-  // 5. ตรวจจับการล้มด้วยระดับความสูง (Fall Detection via Height Threshold Engine)
-  // หากความสูงเป้าหมายต่ำกว่าเกณฑ์ตรวจจับการล้มที่ตั้งไว้บนเว็บ (เช่น < 0.75m)
+  // 5. [ปิดการใช้งาน] ตรวจจับการล้มด้วยระดับความสูง (Fall Detection via Height Threshold Engine)
+  // ปิดส่วนนี้ไว้เพื่อให้ระบบพึ่งพาการตัดสินใจจากอัลกอริทึมชิปเรดาร์ HLK-LD6002C โดยตรง (Method 1: is_fall frame)
+  /*
   if (filtered_h > 0.05 && filtered_h <= fall_threshold) {
     if (!fall_alerted_this_session) {
       target_event = "fall";
@@ -1172,6 +1199,7 @@ void processFilteredHeight(float input_val, String &target_event, String &displa
       Serial.println("🟢 [FALL RECOVERED] Target stood back up above fall threshold.");
     }
   }
+  */
 }
 
 // ================= HLK-LD6002C RADAR PARSER =================
@@ -1293,40 +1321,63 @@ void readRadar() {
               
               // อัปเดตเป้าหมายสถานะการล้มในลูปนี้
               if (is_fall == 0x01) {
-                if (!fall_alerted_this_session) {
-                  if (!is_falling_candidate) {
-                    is_falling_candidate = true;
-                    fall_start_time = millis();
-                    Serial.println("⚠️ [RADAR] Detect potential fall! Start timer for confirmation...");
-                    target_event = current_event;
-                  } else {
-                    if (millis() - fall_start_time >= fall_confirmation_delay) {
-                      target_event = "fall";
-                      display_status = "ตรวจพบคนล้ม (เรดาร์)";
-                      fall_alerted_this_session = true;
-                      is_falling_candidate = false;
-                      Serial.println("🚨 [RADAR] Fall confirmed! Sending alert...");
-                    } else {
+                // หากห้องว่าง (exit) จะไม่ประมวลผลการล้ม เพื่อป้องกัน False Alert ตอนไม่มีคน
+                if (current_event != "exit") {
+                  is_recovering_candidate = false;
+                  
+                  if (!fall_alerted_this_session && current_event != "fall") {
+                    if (!is_falling_candidate) {
+                      is_falling_candidate = true;
+                      fall_start_time = millis();
+                      Serial.println("⚠️ [RADAR] Detect potential fall! Start timer for confirmation...");
                       target_event = current_event;
+                    } else {
+                      if (millis() - fall_start_time >= fall_confirmation_delay) {
+                        target_event = "fall";
+                        display_status = "ตรวจพบคนล้ม (เรดาร์)";
+                        fall_alerted_this_session = true;
+                        is_falling_candidate = false;
+                        Serial.println("🚨 [RADAR] Fall confirmed! Sending alert...");
+                      } else {
+                        target_event = current_event;
+                      }
                     }
+                  } else {
+                    target_event = "fall";
                   }
                 } else {
-                  target_event = current_event;
+                  target_event = "exit";
                 }
               } else {
                 if (is_falling_candidate) {
                   is_falling_candidate = false;
-                  Serial.println("ℹ️ [RADAR] Fall canceled (crouch or transient false trigger detected).");
+                  Serial.println("ℹ️ [RADAR] Fall canceled (transient noise or crouch detected).");
                 }
-                
-                fall_alerted_this_session = false;
 
                 if (current_event == "fall") {
-                  target_event = "fall";
-                  display_status = "ตรวจพบคนล้ม (เรดาร์)";
-                } else {
+                  // หากกำลังอยู่ในสถานะคนล้ม แล้วเรดาร์ตรวจพบว่ายืนปกติ (is_fall == 0)
+                  // ให้นับถอยหลังยืนยันว่าลุกขึ้นยืนจริง (Recovery Confirmation)
+                  if (!is_recovering_candidate) {
+                    is_recovering_candidate = true;
+                    fall_recovery_start_time = millis();
+                    target_event = "fall";
+                  } else {
+                    if (millis() - fall_recovery_start_time >= fall_recovery_delay) {
+                      target_event = "enter";
+                      display_status = "กำลังใช้งาน (เรดาร์)";
+                      fall_alerted_this_session = false;
+                      is_recovering_candidate = false;
+                      Serial.println("🟢 [RADAR] Target recovered/stood up! Switched back to enter.");
+                    } else {
+                      target_event = "fall";
+                    }
+                  }
+                } else if (current_event == "enter") {
                   target_event = "enter";
                   display_status = "กำลังใช้งาน (เรดาร์)";
+                } else {
+                  target_event = "exit";
+                  display_status = "ว่าง";
                 }
               }
 
@@ -1479,16 +1530,21 @@ void readLD2410() {
     if (current_event == "exit") {
       current_event = "enter";
       sendEvent("event", "enter", "กำลังใช้งาน (ตรวจพบคนเข้าห้องน้ำ)");
+      fall_alerted_this_session = false;
+      is_falling_candidate = false;
+      is_recovering_candidate = false;
     }
   } else {
-    // หากไม่มีคนอยู่ และสถานะไม่ใช่ห้องว่าง (เช่น enter หรือ fall)
+    // หากไม่มีคนอยู่ และสถานะเป็น "กำลังใช้งาน" (enter)
     // ให้คอยตรวจจับว่าสัญญาณหายไปนานเกินระยะเวลาหน่วงที่กำหนด (presence_timeout) หรือยัง
-    if (current_event != "exit" && (millis() - last_presence_time > presence_timeout)) {
+    // ⚠️ สำคัญมาก: หากสถานะเป็น "fall" (คนล้ม) จะไม่ตัดเป็น exit อัตโนมัติ เพราะคนที่ล้มอาจนอนนิ่ง หมดสติบนพื้น
+    if (current_event == "enter" && (millis() - last_presence_time > presence_timeout)) {
       current_event = "exit";
       sendEvent("event", "exit", "ว่าง (ไม่มีคนอยู่)");
       fall_alerted_this_session = false; // รีเซ็ตการแจ้งเตือนล้มสำหรับผู้ใช้งานคนถัดไป
       is_falling_candidate = false;      // ล้างค่ายืนยันล้มเมื่อออกจากห้อง
       fall_start_time = 0;
+      is_recovering_candidate = false;
     }
   }
 }
