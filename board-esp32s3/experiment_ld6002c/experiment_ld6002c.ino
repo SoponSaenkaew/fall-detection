@@ -724,6 +724,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           <button onclick="clearWebLogs()" class="btn btn-action" style="padding:3px 8px; font-size:0.75rem;">🗑️ ล้าง</button>
         </div>
       </div>
+      <div id="logTerminal" class="terminal-box">
+        <div class="log-line log-sys">กำลังเชื่อมต่อกับระบบ Live Radar Console...</div>
+      </div>
+    </div>
+
     <!-- 🚀 Wireless Web OTA Firmware Update Card -->
     <div class="card" style="border: 1px solid #a855f7; margin-bottom:20px;">
       <div class="card-title" style="color:#c084fc;">
@@ -1075,6 +1080,54 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     setInterval(fetchWebLogs, 500);
     fetchWebLogs();
+
+    // 🚀 จัดการอัปโหลดไฟล์ OTA ผ่าน AJAX Form
+    const otaForm = document.getElementById('otaForm');
+    if (otaForm) {
+      otaForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('otaFileInput');
+        if (!fileInput.files.length) {
+          alert('กรุณาเลือกไฟล์ .bin ก่อนครับ');
+          return;
+        }
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('update', file);
+
+        const xhr = new XMLHttpRequest();
+        document.getElementById('otaProgBox').style.display = 'block';
+        const bar = document.getElementById('otaProgBar');
+        const txt = document.getElementById('otaProgTxt');
+
+        xhr.upload.addEventListener('progress', function(p) {
+          if (p.lengthComputable) {
+            const percent = Math.round((p.loaded / p.total) * 100);
+            bar.style.width = percent + '%';
+            txt.textContent = 'กำลังอัปโหลดไร้สาย: ' + percent + '%';
+          }
+        });
+
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            bar.style.background = '#10b981';
+            txt.textContent = '🎉 อัปโหลดสำเร็จ 100%! บอร์ด ESP32-S3 กำลังรีบูตใน 5 วินาที...';
+            setTimeout(() => location.reload(), 6000);
+          } else {
+            bar.style.background = '#ef4444';
+            txt.textContent = '❌ อัปโหลดล้มเหลว: ' + xhr.responseText;
+          }
+        };
+
+        xhr.onerror = function() {
+          bar.style.background = '#ef4444';
+          txt.textContent = '❌ เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย';
+        };
+
+        xhr.open('POST', '/update');
+        xhr.send(formData);
+      });
+    }
   </script>
 </body>
 </html>
@@ -1650,7 +1703,12 @@ void loop() {
       // ================= 2. วิเคราะห์ข้อมูล =================
       // ก. เฟรมตรวจจับการล้ม (Type 0x0E02)
       if (msgType == 0x0E02) {
+        static uint8_t prev_raw_is_fall = 0xFF;
         last_raw_is_fall = payload[0]; // 0x01 = ล้ม, 0x00 = ปกติ
+        if (last_raw_is_fall != prev_raw_is_fall) {
+          prev_raw_is_fall = last_raw_is_fall;
+          addWebLog("📡 [UART 0x0E02] สัญญาณจากเรดาร์: " + String(last_raw_is_fall == 0x01 ? "1 (DETECT FALL 🚨)" : "0 (NORMAL 🟢)"));
+        }
       }
       // ข. เฟรมตอบรับการตั้งค่า (ACK: 0x0E04, 0x0E08, 0x0E0C)
       else if (msgType == 0x0E04 || msgType == 0x0E08 || msgType == 0x0E0C) {
@@ -1661,7 +1719,14 @@ void loop() {
       }
       // ค. เฟรมตรวจพบคนอยู่ในห้อง (0x0F09)
       else if (msgType == 0x0F09) {
-        // payload[0] == 0x01 คือมีคนอยู่ในห้อง
+        static unsigned long lastOccupiedLog = 0;
+        static uint8_t prev_occupied = 0xFF;
+        uint8_t occupied = payload[0];
+        if (occupied != prev_occupied || (now - lastOccupiedLog >= 10000)) {
+          prev_occupied = occupied;
+          lastOccupiedLog = now;
+          addWebLog(occupied == 0x01 ? "👤 [PRESENCE] ตรวจพบคนอยู่ในห้อง" : "🚪 [PRESENCE] ห้องว่าง (ไม่มีคน)");
+        }
       }
       // ง. เฟรมความสูงเป้าหมาย (0x0E0E)
       else if (msgType == 0x0E0E && dataLen == 4) {
@@ -1671,6 +1736,17 @@ void loop() {
           raw_radar_distance = dist;
           // คำนวณความสูงจริงของคนจากพื้น: ความสูงติดตั้ง (2.2m) - ระยะจากเพดาน (เช่น ยืน 0.64m -> คนสูง 1.56m)
           person_height = max(0.0f, mount_height - dist);
+
+          static unsigned long lastHeightLog = 0;
+          static float lastLoggedH = -1.0f;
+          if ((now - lastHeightLog >= 2500) || (abs(person_height - lastLoggedH) >= 0.25f)) {
+            lastHeightLog = now;
+            lastLoggedH = person_height;
+            String posture = "ยืนปกติ";
+            if (person_height <= fall_threshold && person_height > 0.05f) posture = "นอนราบ (ล้ม!)";
+            else if (person_height <= 1.20f && person_height > 0.45f) posture = "นั่ง";
+            addWebLog("📏 [TARGET] ความสูงคน: " + String(person_height, 2) + "m | ระยะเพดาน: " + String(dist, 2) + "m (" + posture + ")");
+          }
         }
       }
     }
