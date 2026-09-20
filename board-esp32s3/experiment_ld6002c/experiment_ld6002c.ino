@@ -165,7 +165,7 @@ void saveSettingsToNVS() {
 // ================= DATA STRUCTURES FOR STATISTICS =================
 struct TrialRecord {
   uint16_t trial_no;
-  char scenario_name[36];
+  char scenario_name[64];
   bool ground_truth_fall;   // true = ล้มจริง, false = กิจกรรมปกติ
   bool detected_fall;       // true = เรดาร์ตัดสินว่าล้ม, false = เรดาร์มองว่าปกติ
   uint32_t detection_latency_ms; // เวลาตั้งแต่ตัวแตะพื้น (Impact) จนถึงเรดาร์ตรวจพบ (ms)
@@ -184,7 +184,7 @@ TestMode current_mode = MODE_FREE_RUN;
 
 struct ActiveTrial {
   bool in_progress = false;
-  char name[36];
+  char name[64];
   bool ground_truth_fall;
   unsigned long start_time = 0;
   unsigned long impact_time = 0; // เวลาที่กดปุ่มว่าล้มลงพื้นแล้ว (Impact Moment)
@@ -1371,7 +1371,8 @@ void handleTrialImpact() {
 }
 
 void handleCsvExport() {
-  String csv = "Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Detection_Latency_ms,Confirm_Time_ms,Recovery_Time_ms,Result\n";
+  String csv = "\xEF\xBB\xBF"; // UTF-8 BOM สำหรับ Microsoft Excel ให้แสดงภาษาไทยได้ถูกต้อง
+  csv += "Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Detection_Latency_ms,Confirm_Time_ms,Recovery_Time_ms,Result\n";
   for (int i = 0; i < total_recorded_trials; i++) {
     const TrialRecord &r = trial_history[i];
     csv += String(r.trial_no) + ",\"" + String(r.scenario_name) + "\",";
