@@ -168,6 +168,7 @@ struct TrialRecord {
   char scenario_name[36];
   bool ground_truth_fall;   // true = ล้มจริง, false = กิจกรรมปกติ
   bool detected_fall;       // true = เรดาร์ตัดสินว่าล้ม, false = เรดาร์มองว่าปกติ
+  uint32_t detection_latency_ms; // เวลาตั้งแต่ตัวแตะพื้น (Impact) จนถึงเรดาร์ตรวจพบ (ms)
   uint32_t confirm_time_ms; // เวลาที่ใช้ในการยืนยันล้ม (ms)
   uint32_t recovery_time_ms;// เวลาที่ใช้ในการลุกขึ้น (ms)
   char result_code[4];      // "TP", "TN", "FP", "FN"
@@ -186,7 +187,9 @@ struct ActiveTrial {
   char name[36];
   bool ground_truth_fall;
   unsigned long start_time = 0;
+  unsigned long impact_time = 0; // เวลาที่กดปุ่มว่าล้มลงพื้นแล้ว (Impact Moment)
   bool fall_ever_triggered = false;
+  uint32_t detection_latency_ms = 0;
   uint32_t measured_confirm_ms = 0;
   uint32_t measured_recovery_ms = 0;
 } active_trial;
@@ -305,6 +308,7 @@ void finishActiveTrial(bool detected_as_fall) {
     strncpy(rec.scenario_name, active_trial.name, sizeof(rec.scenario_name) - 1);
     rec.ground_truth_fall = active_trial.ground_truth_fall;
     rec.detected_fall = detected_as_fall;
+    rec.detection_latency_ms = active_trial.detection_latency_ms;
     rec.confirm_time_ms = active_trial.measured_confirm_ms;
     rec.recovery_time_ms = active_trial.measured_recovery_ms;
 
@@ -320,13 +324,17 @@ void finishActiveTrial(bool detected_as_fall) {
 
     total_recorded_trials++;
 
-    addWebLog("🏁 [TRIAL #" + String(rec.trial_no) + "] " + String(rec.scenario_name) + " -> ผลลัพธ์: " + String(rec.result_code) + " (Truth=" + (rec.ground_truth_fall ? "FALL" : "NORMAL") + ", Radar=" + (rec.detected_fall ? "FALL" : "NORMAL") + ")");
+    String latStr = (rec.detection_latency_ms > 0) ? (" | ตรวจจับใน: " + String(rec.detection_latency_ms / 1000.0f, 2) + "s") : "";
+    addWebLog("🏁 [TRIAL #" + String(rec.trial_no) + "] " + String(rec.scenario_name) + " -> ผลลัพธ์: " + String(rec.result_code) + " (Truth=" + (rec.ground_truth_fall ? "FALL" : "NORMAL") + ", Radar=" + (rec.detected_fall ? "FALL" : "NORMAL") + ")" + latStr);
 
     Serial.println(F("\n======================================================================="));
     Serial.printf("🏁 [บันทึกผลรอบที่ #%u] ท่าทดสอบ: %s\n", rec.trial_no, rec.scenario_name);
-    Serial.printf("   👉 ความจริง (Ground Truth) : %s\n", rec.ground_truth_fall ? "FALL (ล้ม)" : "NORMAL (ปกติ)");
-    Serial.printf("   👉 เรดาร์ตรวจพบ (Detection) : %s\n", rec.detected_fall ? "FALL (ตรวจพบล้ม)" : "NORMAL (ไม่พบล้ม)");
-    Serial.printf("   📊 ผลการประเมิน (Outcome)   : %s\n", rec.result_code);
+    Serial.printf("   👉 ความจริง (Ground Truth)  : %s\n", rec.ground_truth_fall ? "FALL (ล้ม)" : "NORMAL (ปกติ)");
+    Serial.printf("   👉 เรดาร์ตรวจพบ (Detection)  : %s\n", rec.detected_fall ? "FALL (ตรวจพบล้ม)" : "NORMAL (ไม่พบล้ม)");
+    if (rec.detection_latency_ms > 0) {
+      Serial.printf("   ⏱️ เวลาตอบสนอง (Latency)    : %.2f วินาที (นับจากตัวแตะพื้น)\n", rec.detection_latency_ms / 1000.0f);
+    }
+    Serial.printf("   📊 ผลการประเมิน (Outcome)    : %s\n", rec.result_code);
     Serial.println(F("=======================================================================\n"));
   }
 }
@@ -340,6 +348,8 @@ void startScenarioTrial(const char* name, bool is_fall) {
   strncpy(active_trial.name, name, sizeof(active_trial.name) - 1);
   active_trial.ground_truth_fall = is_fall;
   active_trial.start_time = millis();
+  active_trial.impact_time = 0;
+  active_trial.detection_latency_ms = 0;
   active_trial.fall_ever_triggered = false;
   active_trial.measured_confirm_ms = 0;
   active_trial.measured_recovery_ms = 0;
@@ -490,9 +500,22 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div id="statusMeta" class="status-meta">กำลังโหลดสถานะ...</div>
       </div>
       <div id="trialProgress" style="display:none; margin-top:10px; font-size:0.85rem; color:var(--warning); text-align:center;">
-        ⏳ กำลังทดสอบ: <strong id="activeTrialName"></strong> (<span id="activeTimer">0</span>s)
+        <div style="font-size:0.95rem; margin-bottom:6px;">
+          ⏳ กำลังทดสอบ: <strong id="activeTrialName"></strong> (<span id="activeTimer">0</span>s)
+        </div>
+        
+        <!-- ปุ่มกดมาร์กจังหวะตัวแตะพื้น (เฉพาะรอบทดสอบท่าล้ม) -->
+        <div id="impactArea" style="display:none; margin:10px 0;">
+          <button id="impactBtn" onclick="markImpact()" class="btn btn-danger" style="width:100%; padding:12px; font-size:1.05rem; font-weight:bold; box-shadow:0 0 14px rgba(239,68,68,0.7); border:2px solid #fff; animation:pulse 1.2s infinite; cursor:pointer;">
+            💥 ล้มลงพื้นแล้ว! (กดเมื่อตัวแตะพื้น)
+          </button>
+          <div id="impactStatus" style="display:none; padding:8px; background:#450a0a; border-radius:8px; border:1px solid var(--danger); color:#fca5a5; font-weight:bold; font-size:0.92rem;">
+            ⏱️ บันทึกเวลาล้มแล้ว! รอเรดาร์ประมวลผล... (<span id="impactElapsed">0.0</span>s)
+          </div>
+        </div>
+
         <div style="margin-top:6px;">
-          <button onclick="endTrial()" class="btn btn-action" style="padding:4px 12px; font-size:0.8rem;">⏹️ บันทึกจบรอบ ADL ทันที</button>
+          <button onclick="endTrial()" class="btn btn-action" style="padding:4px 12px; font-size:0.8rem;">⏹️ บันทึกจบรอบ / ไม่ตรวจพบ</button>
         </div>
       </div>
     </div>
@@ -696,12 +719,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
               <th>ท่าทาง</th>
               <th>ความจริง</th>
               <th>เรดาร์</th>
+              <th>ตอบสนอง</th>
               <th>หน่วง</th>
               <th>ผล</th>
             </tr>
           </thead>
           <tbody id="trialTableBody">
-            <tr><td colspan="6" style="text-align:center; color:var(--muted);">ยังไม่มีข้อมูลการทดลอง</td></tr>
+            <tr><td colspan="7" style="text-align:center; color:var(--muted);">ยังไม่มีข้อมูลการทดลอง</td></tr>
           </tbody>
         </table>
       </div>
@@ -848,6 +872,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       fetch('/api/trial/end', { method: 'POST' }).then(() => updateStatus());
     }
 
+    function markImpact() {
+      fetch('/api/trial/impact', { method: 'POST' }).then(() => updateStatus());
+    }
+
     function resetStats() {
       if (confirm('ต้องการล้างข้อมูลสถิติการทดลองทั้งหมดหรือไม่?')) {
         fetch('/api/reset', { method: 'POST' }).then(() => updateStatus());
@@ -911,6 +939,25 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('activeTrialName').innerText = data.trial_name;
             const sec = Math.floor((Date.now() - trialStartTime) / 1000);
             document.getElementById('activeTimer').innerText = sec;
+
+            const impactArea = document.getElementById('impactArea');
+            const impactBtn = document.getElementById('impactBtn');
+            const impactStatus = document.getElementById('impactStatus');
+            const impactElapsed = document.getElementById('impactElapsed');
+
+            if (data.trial_is_fall) {
+              impactArea.style.display = 'block';
+              if (data.impact_marked) {
+                impactBtn.style.display = 'none';
+                impactStatus.style.display = 'block';
+                impactElapsed.innerText = data.impact_elapsed_sec;
+              } else {
+                impactBtn.style.display = 'block';
+                impactStatus.style.display = 'none';
+              }
+            } else {
+              impactArea.style.display = 'none';
+            }
           } else {
             pBar.style.display = 'none';
           }
@@ -1003,13 +1050,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 <td>${t.name}</td>
                 <td>${t.truth}</td>
                 <td>${t.radar}</td>
+                <td style="color:${t.detect_lat > 0 ? 'var(--primary)' : 'var(--muted)'}; font-weight:600;">${t.detect_lat > 0 ? (t.detect_lat / 1000).toFixed(2) + 's' : '-'}</td>
                 <td>${t.lat > 0 ? t.lat + 'ms' : '-'}</td>
                 <td><span class="badge badge-${t.res}">${t.res}</span></td>
               </tr>`;
             }
             document.getElementById('trialTableBody').innerHTML = rows;
           } else {
-            document.getElementById('trialTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted);">ยังไม่มีข้อมูลการทดลอง</td></tr>';
+            document.getElementById('trialTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted);">ยังไม่มีข้อมูลการทดลอง</td></tr>';
           }
         })
         .catch(err => console.log(err));
@@ -1196,6 +1244,9 @@ void handleStatusApi() {
 
   json += "\"in_trial\":" + String(active_trial.in_progress ? "true" : "false") + ",";
   json += "\"trial_name\":\"" + String(active_trial.name) + "\",";
+  json += "\"trial_is_fall\":" + String(active_trial.ground_truth_fall ? "true" : "false") + ",";
+  json += "\"impact_marked\":" + String(active_trial.impact_time > 0 ? "true" : "false") + ",";
+  json += "\"impact_elapsed_sec\":\"" + String((active_trial.in_progress && active_trial.impact_time > 0) ? String((millis() - active_trial.impact_time) / 1000.0f, 1) : "0.0") + "\",";
   json += "\"total_trials\":" + String(n) + ",";
   json += "\"tp\":" + String(tp) + ",";
   json += "\"tn\":" + String(tn) + ",";
@@ -1213,6 +1264,7 @@ void handleStatusApi() {
     json += "\"name\":\"" + String(r.scenario_name) + "\",";
     json += "\"truth\":\"" + String(r.ground_truth_fall ? "FALL" : "NORMAL") + "\",";
     json += "\"radar\":\"" + String(r.detected_fall ? "FALL" : "NORMAL") + "\",";
+    json += "\"detect_lat\":" + String(r.detection_latency_ms) + ",";
     json += "\"lat\":" + String(r.confirm_time_ms) + ",";
     json += "\"res\":\"" + String(r.result_code) + "\"}";
     if (i < total_recorded_trials - 1) json += ",";
@@ -1308,13 +1360,24 @@ void handleTrialEnd() {
   }
 }
 
+void handleTrialImpact() {
+  if (active_trial.in_progress) {
+    active_trial.impact_time = millis();
+    addWebLog("💥 [IMPACT MARKED] บันทึกจังหวะตัวแตะพื้นแล้ว! เริ่มจับเวลาตรวจจับเรดาร์...");
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "No active trial");
+  }
+}
+
 void handleCsvExport() {
-  String csv = "Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Confirm_Time_ms,Recovery_Time_ms,Result\n";
+  String csv = "Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Detection_Latency_ms,Confirm_Time_ms,Recovery_Time_ms,Result\n";
   for (int i = 0; i < total_recorded_trials; i++) {
     const TrialRecord &r = trial_history[i];
     csv += String(r.trial_no) + ",\"" + String(r.scenario_name) + "\",";
     csv += String(r.ground_truth_fall ? "FALL" : "NORMAL") + ",";
     csv += String(r.detected_fall ? "FALL" : "NORMAL") + ",";
+    csv += String(r.detection_latency_ms) + ",";
     csv += String(r.confirm_time_ms) + "," + String(r.recovery_time_ms) + ",";
     csv += String(r.result_code) + "\n";
   }
@@ -1450,6 +1513,7 @@ void setup() {
   server.on("/api/ping", HTTP_POST, handlePingApi);
   server.on("/api/trial/start", HTTP_POST, handleTrialStart);
   server.on("/api/trial/end", HTTP_POST, handleTrialEnd);
+  server.on("/api/trial/impact", HTTP_POST, handleTrialImpact);
   server.on("/api/csv", HTTP_GET, handleCsvExport);
   server.on("/api/reset", HTTP_POST, handleResetApi);
   server.on("/api/config/buzzer", HTTP_POST, handleConfigBuzzer);
@@ -1521,6 +1585,13 @@ void updateFallEvaluation(unsigned long now) {
       current_fall_state = STATE_FALL_CANDIDATE;
       fall_candidate_start_time = now;
       setRGB(255, 120, 0); // สีส้ม
+
+      // คำนวณ Detection Latency ถ้าผู้ทดลองกดปุ่มมาร์กเวลาล้มลงพื้นไว้
+      if (active_trial.in_progress && active_trial.impact_time > 0 && active_trial.detection_latency_ms == 0) {
+        active_trial.detection_latency_ms = (now >= active_trial.impact_time) ? (now - active_trial.impact_time) : 0;
+        addWebLog("⏱️ [DETECTION LATENCY] เรดาร์เริ่มตรวจพบล้มใน " + String(active_trial.detection_latency_ms / 1000.0f, 2) + " วินาที (หลังตัวแตะพื้น)");
+      }
+
       addWebLog("⚠️ [ตรวจพบการล้ม] UART=" + String(last_raw_is_fall) + " | TX2=" + String(digital_fall_state == HIGH ? "HIGH" : "LOW") + " | รอหน่วงยืนยัน " + String(fall_confirmation_delay) + "ms (สูง: " + String(person_height, 2) + "m)");
     } 
     else if (current_fall_state == STATE_FALL_CANDIDATE) {
@@ -1530,7 +1601,13 @@ void updateFallEvaluation(unsigned long now) {
         setBuzzer(true);
 
         last_confirmed_latency = now - fall_candidate_start_time;
-        addWebLog("🚨🚨🚨 [ALERT CONFIRMED] ยืนยันคนล้มจริง! (UART=" + String(last_raw_is_fall) + ", TX2=" + String(digital_fall_state == HIGH ? "HIGH" : "LOW") + ") | หน่วงเวลา: " + String(last_confirmed_latency) + "ms | สูง: " + String(person_height, 2) + "m");
+
+        if (active_trial.in_progress && active_trial.impact_time > 0 && active_trial.detection_latency_ms == 0) {
+          active_trial.detection_latency_ms = (now >= active_trial.impact_time) ? (now - active_trial.impact_time) : 0;
+        }
+
+        String latInfo = (active_trial.detection_latency_ms > 0) ? (" | ความเร็วตรวจจับ: " + String(active_trial.detection_latency_ms / 1000.0f, 2) + "s") : "";
+        addWebLog("🚨🚨🚨 [ALERT CONFIRMED] ยืนยันคนล้มจริง! (UART=" + String(last_raw_is_fall) + ", TX2=" + String(digital_fall_state == HIGH ? "HIGH" : "LOW") + ")" + latInfo + " | หน่วงเวลา: " + String(last_confirmed_latency) + "ms | สูง: " + String(person_height, 2) + "m");
 
         if (active_trial.in_progress) {
           active_trial.fall_ever_triggered = true;
