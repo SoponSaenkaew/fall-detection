@@ -665,20 +665,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <span>🚨 2. เลือกท่าล้มจำลอง (Fall Scenarios)</span>
       </div>
       <div class="btn-grid">
-        <button onclick="startTrial('Forward Fall (ล้มไปข้างหน้า)', true)" class="btn btn-fall">🚶‍♂️➡️ ล้มไปข้างหน้า</button>
-        <button onclick="startTrial('Backward Fall (ล้มหงายหลัง)', true)" class="btn btn-fall">🚶‍♂️⬅️ ล้มหงายหลัง</button>
-        <button onclick="startTrial('Lateral Fall (ล้มตะแคงข้าง)', true)" class="btn btn-fall">🚶‍♂️↘️ ล้มตะแคงข้าง</button>
-        <button onclick="startTrial('Slow Collapse (ล้มทรุดตัว)', true)" class="btn btn-fall">🚶‍♂️⬇️ ล้มทรุดตัวลง</button>
+        <button onclick="startTrial('Forward Fall', true)" class="btn btn-fall">🚶‍♂️➡️ Forward Fall (ล้มไปข้างหน้า)</button>
+        <button onclick="startTrial('Backward Fall', true)" class="btn btn-fall">🚶‍♂️⬅️ Backward Fall (ล้มหงายหลัง)</button>
+        <button onclick="startTrial('Lateral Fall', true)" class="btn btn-fall">🚶‍♂️↘️ Lateral Fall (ล้มตะแคงข้าง)</button>
+        <button onclick="startTrial('Slow Collapse', true)" class="btn btn-fall">🚶‍♂️⬇️ Slow Collapse (ล้มทรุดตัว)</button>
       </div>
 
       <div class="card-title" style="margin-top:14px;">
         <span>🚶 3. เลือกท่ากิจกรรมทั่วไป (ADL Scenarios)</span>
       </div>
       <div class="btn-grid">
-        <button onclick="startTrial('Bending Down (ก้มเก็บของ)', false)" class="btn btn-adl">📦 ก้มเก็บของ</button>
-        <button onclick="startTrial('Crouching (นั่งยองๆ)', false)" class="btn btn-adl">👟 นั่งยองๆ / ผูกเชือก</button>
-        <button onclick="startTrial('Sitting (นั่งชักโครก)', false)" class="btn btn-adl">🚽 นั่งชักโครก/เก้าอี้</button>
-        <button onclick="startTrial('Walking (เดินไปมา)', false)" class="btn btn-adl">🚶 เดินไปมาในห้อง</button>
+        <button onclick="startTrial('Bending Down', false)" class="btn btn-adl">📦 Bending Down (ก้มเก็บของ)</button>
+        <button onclick="startTrial('Crouching', false)" class="btn btn-adl">👟 Crouching (นั่งยองๆ)</button>
+        <button onclick="startTrial('Sitting', false)" class="btn btn-adl">🚽 Sitting (นั่งเก้าอี้)</button>
+        <button onclick="startTrial('Walking', false)" class="btn btn-adl">🚶 Walking (เดินไปมา)</button>
       </div>
     </div>
 
