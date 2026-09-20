@@ -500,7 +500,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <!-- 📏 Live Real Person Height & Sensor Verification Card -->
     <div class="card" style="border-left: 5px solid var(--primary);">
       <div class="card-title">
-        <span>📏 ระดับความสูงเป้าหมายสด (Target Height - 0x0E0E)</span>
+        <span>📏 ระดับความสูงเป้าหมายสด (Target Height - แสดงเพื่อดีบัค)</span>
         <span id="heightBadge" class="badge" style="background:#0369a1; color:#e0f2fe;">กำลังวัดค่า...</span>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
@@ -946,18 +946,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             if (pH <= data.fall_threshold && pH > 0.05) {
               pEl.style.color = 'var(--danger)';
-              descEl.innerHTML = '<span style="color:var(--danger)">🔴 คนนอนราบกับพื้น! (ตรวจพบล้ม)</span>';
-              hBadge.innerText = '🚨 นอนราบ (ล้ม)';
+              descEl.innerHTML = '<span style="color:var(--danger)">🔴 ระดับนอนราบ (~' + pH.toFixed(2) + 'm) [แสดงค่าดีบัค]</span>';
+              hBadge.innerText = 'ระดับนอนราบ';
               hBadge.style.background = '#991b1b';
             } else if (pH <= 1.20 && pH > 0.45) {
               pEl.style.color = 'var(--warning)';
-              descEl.innerHTML = '<span style="color:var(--warning)">🟠 คนนั่งเก้าอี้ / ชักโครก</span>';
-              hBadge.innerText = 'นั่งปกติ';
+              descEl.innerHTML = '<span style="color:var(--warning)">🟠 ระดับนั่ง (~' + pH.toFixed(2) + 'm)</span>';
+              hBadge.innerText = 'ระดับนั่ง';
               hBadge.style.background = '#9a3412';
             } else {
               pEl.style.color = 'var(--success)';
-              descEl.innerHTML = '<span style="color:var(--success)">🟢 คนยืนปกติ</span>';
-              hBadge.innerText = 'ยืนปกติ';
+              descEl.innerHTML = '<span style="color:var(--success)">🟢 ระดับยืน (~' + pH.toFixed(2) + 'm)</span>';
+              hBadge.innerText = 'ระดับยืน';
               hBadge.style.background = '#065f46';
             }
           } else {
@@ -1506,20 +1506,13 @@ void setup() {
   Serial.println(F("🟢 ระบบพร้อมเริ่มทดลองและปรับแต่งค่าบนมือถือได้ทันที!"));
 }
 
-// ================= MULTI-SOURCE FALL DETECTION EVALUATION =================
+// ================= FALL DETECTION EVALUATION (UART 0x0E02 & DIGITAL TX2) =================
 void updateFallEvaluation(unsigned long now) {
-  // ตรวจพบล้มแบบผสานสัญญาณ (Multi-Source Sensor Fusion):
-  // 1. เรดาร์ส่งเฟรมตรวจพบล้ม (last_raw_is_fall == 0x01)
+  // ตรวจพบล้มจากสัญญาณเรดาร์โดยตรง:
+  // 1. เรดาร์ส่งเฟรมตรวจพบล้มผ่าน UART (last_raw_is_fall == 0x01)
   // หรือ 2. ขาดิจิตอลตรง TX2 (GPIO 3) ส่ง HIGH (3.3V)
-  // หรือ 3. ความสูงคนลดลงเหลือนอนราบกับพื้น (person_height <= fall_threshold เช่น <= 0.50m)
-  bool fall_detected = (last_raw_is_fall == 0x01) || 
-                       (digital_fall_state == HIGH) || 
-                       (person_height > 0.05f && person_height <= fall_threshold);
-
-  // ป้องกัน False Alarm: ถ้าความสูงคนยืนหรือนั่งชัดเจน (> 0.85m) จะไม่นับว่าล้ม
-  if (person_height > 0.85f) {
-    fall_detected = false;
-  }
+  // (ระดับความสูงเป้าหมาย 0x0E0E แสดงผลและบันทึกเพื่อการดีบัคเท่านั้น ไม่นำมาตัดสินการล้ม)
+  bool fall_detected = (last_raw_is_fall == 0x01) || (digital_fall_state == HIGH);
 
   if (fall_detected) {
     recovery_start_time = 0;
@@ -1528,7 +1521,7 @@ void updateFallEvaluation(unsigned long now) {
       current_fall_state = STATE_FALL_CANDIDATE;
       fall_candidate_start_time = now;
       setRGB(255, 120, 0); // สีส้ม
-      addWebLog("⚠️ [ตรวจพบการล้ม] รอหน่วงยืนยัน " + String(fall_confirmation_delay) + "ms | ความสูงคน: " + String(person_height, 2) + "m");
+      addWebLog("⚠️ [ตรวจพบการล้ม] UART=" + String(last_raw_is_fall) + " | TX2=" + String(digital_fall_state == HIGH ? "HIGH" : "LOW") + " | รอหน่วงยืนยัน " + String(fall_confirmation_delay) + "ms (สูง: " + String(person_height, 2) + "m)");
     } 
     else if (current_fall_state == STATE_FALL_CANDIDATE) {
       if (now - fall_candidate_start_time >= fall_confirmation_delay) {
@@ -1537,7 +1530,7 @@ void updateFallEvaluation(unsigned long now) {
         setBuzzer(true);
 
         last_confirmed_latency = now - fall_candidate_start_time;
-        addWebLog("🚨🚨🚨 [ALERT CONFIRMED] ยืนยันคนล้มจริง! | หน่วงเวลา: " + String(last_confirmed_latency) + "ms | สูง: " + String(person_height, 2) + "m");
+        addWebLog("🚨🚨🚨 [ALERT CONFIRMED] ยืนยันคนล้มจริง! (UART=" + String(last_raw_is_fall) + ", TX2=" + String(digital_fall_state == HIGH ? "HIGH" : "LOW") + ") | หน่วงเวลา: " + String(last_confirmed_latency) + "ms | สูง: " + String(person_height, 2) + "m");
 
         if (active_trial.in_progress) {
           active_trial.fall_ever_triggered = true;
@@ -1551,20 +1544,20 @@ void updateFallEvaluation(unsigned long now) {
     }
   } 
   else {
-    // สภาวะปกติ: เมื่อลุกขึ้นยืน (ความสูง > 0.85m หรือสัญญาณเป็น 0 และขา digital LOW)
-    bool is_normal = (person_height > 0.85f) || (last_raw_is_fall == 0x00 && digital_fall_state == LOW);
+    // สภาวะปกติ: เมื่อสัญญาณเรดาร์ทั้ง UART เป็น 0 และขาดิจิตอลกลับเป็น LOW
+    bool is_normal = (last_raw_is_fall == 0x00 && digital_fall_state == LOW);
 
     if (is_normal) {
       if (current_fall_state == STATE_FALL_CANDIDATE) {
         current_fall_state = STATE_NORMAL;
         setRGB(0, 150, 0); // คืนสีเขียว
-        addWebLog("🟢 [RADAR] ยกเลิกการเตือน (คนก้มตัวชั่วคราวแล้วลุกขึ้น)");
+        addWebLog("🟢 [RADAR] ยกเลิกการเตือน (สัญญาณเรดาร์กลับสู่ปกติ UART=0, TX2=LOW)");
       }
       else if (current_fall_state == STATE_FALL_CONFIRMED) {
         current_fall_state = STATE_RECOVERING;
         recovery_start_time = now;
         setRGB(255, 255, 0); // สีเหลือง
-        addWebLog("🟡 [RADAR] เริ่มตรวจพบการลุกขึ้น (Recovering) | รอหน่วงยืนยัน " + String(fall_recovery_delay) + "ms");
+        addWebLog("🟡 [RADAR] สัญญาณล้มหายไป (Recovering) | รอหน่วงยืนยัน " + String(fall_recovery_delay) + "ms");
       }
       else if (current_fall_state == STATE_RECOVERING) {
         if (now - recovery_start_time >= fall_recovery_delay) {
@@ -1584,7 +1577,7 @@ void updateFallEvaluation(unsigned long now) {
         static unsigned long lastNormalLog = 0;
         if (now - lastNormalLog >= 5000) {
           lastNormalLog = now;
-          addWebLog("🟢 [STATUS] สภาวะปกติ: ยืน / นั่ง (สูง " + String(person_height, 2) + "m)");
+          addWebLog("🟢 [STATUS] สภาวะปกติ (UART=0, TX2=LOW | สูง: " + String(person_height, 2) + "m)");
         }
       }
     }

@@ -868,35 +868,16 @@ void loop() {
                     person_height = max(0.0f, mount_height - dist);
                     last_height_ms = now;
 
-                    // ตรรกะตรวจจับการล้มจากระดับความสูงจริง (ฉุกเฉิน / สำรอง)
-                    // ถ้าระดับความสูงคนต่ำกว่าเกณฑ์ (<= 0.45m) เช่น นอนราบ (0.22m)
-                    if (person_height <= fall_threshold && person_height > 0.05f) {
-                        if (!height_fall_alerted) {
-                            if (!height_falling_candidate) {
-                                height_falling_candidate = true;
-                                height_fall_start_time = now;
-                                setRGB(255, 120, 0); // สีส้ม
-                                addLog("⚠️ [ตรวจพบล้มจากความสูง] ความสูงคนลดเหลือ " + String(person_height, 2) + "m! กำลังจับเวลา 2s...");
-                            } else if (now - height_fall_start_time >= FALL_CONFIRM_MS) {
-                                height_fall_alerted = true;
-                                height_falling_candidate = false;
-                                setRGB(255, 0, 0);   // สีแดง
-                                setBuzzer(true);     // เปิดไซเรน
-                                addLog("🚨🚨🚨 [ALERT CONFIRMED] ยืนยันคนนอนล้มราบกับพื้น! (ความสูง: " + String(person_height, 2) + "m) 🚨🚨🚨");
-                            }
-                        }
-                    } else if (person_height > 0.85f) { // ผู้ใช้งานลุกขึ้นนั่งหรือยืน (> 0.85m)
-                        if (height_falling_candidate) {
-                            height_falling_candidate = false;
-                            setRGB(0, 150, 0);
-                            addLog("🟢 [ความสูง] ยกเลิกการเตือน (คนลุกขึ้นแล้ว ความสูง " + String(person_height, 2) + "m)");
-                        }
-                        if (height_fall_alerted) {
-                            height_fall_alerted = false;
-                            setRGB(0, 150, 0);
-                            setBuzzer(false);
-                            addLog("🟢 [ความสูง] ผู้ใช้งานลุกขึ้นยืนแล้ว (" + String(person_height, 2) + "m) -> ปิดไซเรน");
-                        }
+                    // บันทึก Log ข้อมูลความสูงสดเพื่อการ Debug เท่านั้น (ไม่นำมาตัดสินการล้ม)
+                    static unsigned long last_h_log = 0;
+                    static float prev_logged_h = -1.0f;
+                    if ((now - last_h_log >= 3000) || (abs(person_height - prev_logged_h) >= 0.25f)) {
+                        last_h_log = now;
+                        prev_logged_h = person_height;
+                        String posture = "ยืน";
+                        if (person_height <= fall_threshold && person_height > 0.05f) posture = "นอนราบ";
+                        else if (person_height <= 1.20f && person_height > 0.45f) posture = "นั่ง";
+                        addLog("📏 [HEIGHT DEBUG] สูง " + String(person_height, 2) + "m | ห่างเพดาน " + String(dist, 2) + "m (" + posture + ")");
                     }
                 }
             }
@@ -904,9 +885,9 @@ void loop() {
     }
 
     // -------------------------------------------------------------
-    // 3. เอฟเฟกต์ไฟกะพริบสีแดงขณะยืนยันการล้ม (ทั้งจากเรดาร์ หรือจากความสูง)
+    // 3. เอฟเฟกต์ไฟกะพริบสีแดงขณะยืนยันการล้ม (จาก UART หรือ จากขาดิจิตอล TX2)
     // -------------------------------------------------------------
-    bool active_alert = fall_alerted || height_fall_alerted;
+    bool active_alert = fall_alerted || (digital_pin_state == HIGH);
     if (active_alert) {
         static unsigned long last_flash = 0;
         static bool flash = false;
