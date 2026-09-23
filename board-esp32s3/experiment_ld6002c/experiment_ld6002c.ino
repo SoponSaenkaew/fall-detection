@@ -45,7 +45,11 @@ int radar_rx_pin           = 18;  // ขา RX ของ ESP32-S3 (ต่อก�
 int radar_tx_pin           = 17;  // ขา TX ของ ESP32-S3 (ต่อกับ RX0 ของเรดาร์)
 #define RADAR_DIGITAL_PIN  3    // ขาอ่านสัญญาณขาดิจิตอลตรง (ต่อกับ TX2 ของ LD6002C)
 #define BUZZER_PIN         15   // ขาควบคุม Buzzer / Siren Relay (Active LOW)
+#ifdef RGB_BUILTIN
+#define RGB_LED_PIN        RGB_BUILTIN // ไฟสถานะ RGB บนบอร์ด ESP32-S3
+#else
 #define RGB_LED_PIN        48   // ไฟสถานะ RGB บนบอร์ด ESP32-S3
+#endif
 #define RGB_BRIGHTNESS     0.25 // ความสว่างไฟ RGB (0.0 - 1.0)
 #define RADAR_BAUD         115200 // ความเร็วบอดเรตมาตรฐานของเรดาร์
 
@@ -1788,18 +1792,7 @@ void loop() {
         addWebLog("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x" + String(msgType, HEX));
         Serial.printf("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x%04X\n", msgType);
       }
-      // ค. เฟรมตรวจพบคนอยู่ในห้อง (0x0F09)
-      else if (msgType == 0x0F09) {
-        static unsigned long lastOccupiedLog = 0;
-        static uint8_t prev_occupied = 0xFF;
-        uint8_t occupied = payload[0];
-        if (occupied != prev_occupied || (now - lastOccupiedLog >= 10000)) {
-          prev_occupied = occupied;
-          lastOccupiedLog = now;
-          addWebLog(occupied == 0x01 ? "👤 [PRESENCE] ตรวจพบคนอยู่ในห้อง" : "🚪 [PRESENCE] ห้องว่าง (ไม่มีคน)");
-        }
-      }
-      // ง. เฟรมความสูงเป้าหมาย (0x0E0E)
+      // ค. เฟรมความสูงเป้าหมาย (0x0E0E)
       else if (msgType == 0x0E0E && dataLen == 4) {
         float dist;
         memcpy(&dist, payload, 4);
@@ -1823,28 +1816,58 @@ void loop() {
     }
   }
 
-  // ประเมินผลสถานะการล้ม (Multi-Source Sensor Fusion) ทุกรอบ loop อย่างต่อเนื่อง
+  // ประเมินผลสถานะการล้ม ทุกรอบ loop อย่างต่อเนื่อง
   updateFallEvaluation(now);
 
-  // ไฟกะพริบสีแดงขณะยืนยันคนล้ม (หรือกระพริบสีฟ้าช้าๆ หากเรดาร์หลุดการติดต่อ)
-  if (current_fall_state == STATE_FALL_CONFIRMED) {
+  // ================= ควบคุมไฟ RGB แสดงสถานะระบบ =================
+  static int prev_led_mode = -1;
+  int current_led_mode = 0; // 0=ปกติ (เขียว), 1=กำลังตรวจพบล้ม (ส้ม), 2=ยืนยันคนล้ม (กะพริบแดง), 3=กำลังลุกขึ้น (เหลือง), 4=หลุดการติดต่อ (กะพริบน้ำเงิน)
+
+  if (!is_sensor_connected && now > 5000) {
+    current_led_mode = 4; // หลุดการติดต่อกับเรดาร์
+  } else if (current_fall_state == STATE_FALL_CONFIRMED) {
+    current_led_mode = 2; // ยืนยันล้ม (กะพริบแดง)
+  } else if (current_fall_state == STATE_FALL_CANDIDATE) {
+    current_led_mode = 1; // ส้ม (Candidate)
+  } else if (current_fall_state == STATE_RECOVERING) {
+    current_led_mode = 3; // เหลือง (Recovering)
+  } else {
+    current_led_mode = 0; // ปกติ (เขียว)
+  }
+
+  // จัดการไฟตามโหมด
+  if (current_led_mode == 2) {
     static unsigned long last_flash = 0;
     static bool flash = false;
     if (now - last_flash >= 250) {
       last_flash = now;
       flash = !flash;
-      if (flash) setRGB(255, 0, 0);
-      else setRGB(0, 0, 0);
+      setRGB(flash ? 255 : 0, 0, 0);
     }
-  } else if (!is_sensor_connected && now > 5000) {
-    // แจ้งเตือนผ่านไฟ RGB บนบอร์ด: ถ้าหลุดการติดต่อกับเรดาร์ ให้กระพริบสีน้ำเงินเตือน
+  } else if (current_led_mode == 4) {
     static unsigned long last_offline_flash = 0;
     static bool offline_flash = false;
     if (now - last_offline_flash >= 600) {
       last_offline_flash = now;
       offline_flash = !offline_flash;
-      if (offline_flash) setRGB(0, 0, 180);
-      else setRGB(0, 0, 0);
+      setRGB(0, 0, offline_flash ? 180 : 0);
     }
+  } else {
+    // โหมดติดค้าง: เขียว (0), ส้ม (1), เหลือง (3)
+    if (current_led_mode != prev_led_mode) {
+      prev_led_mode = current_led_mode;
+      if (current_led_mode == 0) {
+        setRGB(0, 150, 0);       // 🟢 สภาวะปกติ: ไฟเขียวติดสว่าง!
+      } else if (current_led_mode == 1) {
+        setRGB(255, 120, 0);     // 🟠 ส้ม
+      } else if (current_led_mode == 3) {
+        setRGB(255, 255, 0);     // 🟡 เหลือง
+      }
+    }
+  }
+
+  // หากออกจากโหมดกะพริบ (2 หรือ 4) ให้รีเซ็ต prev_led_mode เพื่อให้ไฟเขียวกลับมาติดทันที
+  if (current_led_mode != 2 && current_led_mode != 4 && (prev_led_mode == 2 || prev_led_mode == 4)) {
+    prev_led_mode = -1;
   }
 }

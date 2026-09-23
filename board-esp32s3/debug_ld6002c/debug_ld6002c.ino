@@ -40,7 +40,11 @@
 #define RADAR_TX_PIN       17     // UART TX (ต่อกับ RX0 ของ LD6002C)
 #define RADAR_DIGITAL_PIN  3      // Digital In (ต่อกับ TX2 ของ LD6002C)
 #define BUZZER_PIN         15     // Buzzer (Active LOW)
+#ifdef RGB_BUILTIN
+#define RGB_LED_PIN        RGB_BUILTIN
+#else
 #define RGB_LED_PIN        48     // ไฟ RGB NeoPixel บนบอร์ด
+#endif
 #define RGB_BRIGHTNESS     0.25   // ความสว่างไฟ RGB
 #define RADAR_BAUD         115200 // ความเร็วบอดเรต
 
@@ -888,13 +892,20 @@ void loop() {
     // 3. เอฟเฟกต์ไฟกะพริบสีแดงขณะยืนยันการล้ม (จาก UART หรือ จากขาดิจิตอล TX2)
     // -------------------------------------------------------------
     bool active_alert = fall_alerted || (digital_pin_state == HIGH);
+    static bool was_active_alert = false;
     if (active_alert) {
+        was_active_alert = true;
         static unsigned long last_flash = 0;
         static bool flash = false;
         if (now - last_flash >= 200) {
             last_flash = now;
             flash = !flash;
             setRGB(flash ? 255 : 0, 0, 0);
+        }
+    } else {
+        if (was_active_alert) {
+            was_active_alert = false;
+            setRGB(0, 150, 0); // คืนไฟเขียวทันทีที่การเตือนสิ้นสุด
         }
     }
 }
