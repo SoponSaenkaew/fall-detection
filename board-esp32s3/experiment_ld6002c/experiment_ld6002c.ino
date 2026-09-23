@@ -1821,11 +1821,9 @@ void loop() {
 
   // ================= ควบคุมไฟ RGB แสดงสถานะระบบ =================
   static int prev_led_mode = -1;
-  int current_led_mode = 0; // 0=ปกติ (เขียว), 1=กำลังตรวจพบล้ม (ส้ม), 2=ยืนยันคนล้ม (กะพริบแดง), 3=กำลังลุกขึ้น (เหลือง), 4=หลุดการติดต่อ (กะพริบน้ำเงิน)
+  int current_led_mode = 0; // 0=ปกติ (เขียว), 1=กำลังตรวจพบล้ม (ส้ม), 2=ยืนยันคนล้ม (กะพริบแดง), 3=กำลังลุกขึ้น (เหลือง)
 
-  if (!is_sensor_connected && now > 5000) {
-    current_led_mode = 4; // หลุดการติดต่อกับเรดาร์
-  } else if (current_fall_state == STATE_FALL_CONFIRMED) {
+  if (current_fall_state == STATE_FALL_CONFIRMED) {
     current_led_mode = 2; // ยืนยันล้ม (กะพริบแดง)
   } else if (current_fall_state == STATE_FALL_CANDIDATE) {
     current_led_mode = 1; // ส้ม (Candidate)
@@ -1844,20 +1842,12 @@ void loop() {
       flash = !flash;
       setRGB(flash ? 255 : 0, 0, 0);
     }
-  } else if (current_led_mode == 4) {
-    static unsigned long last_offline_flash = 0;
-    static bool offline_flash = false;
-    if (now - last_offline_flash >= 600) {
-      last_offline_flash = now;
-      offline_flash = !offline_flash;
-      setRGB(0, 0, offline_flash ? 180 : 0);
-    }
   } else {
     // โหมดติดค้าง: เขียว (0), ส้ม (1), เหลือง (3)
     if (current_led_mode != prev_led_mode) {
       prev_led_mode = current_led_mode;
       if (current_led_mode == 0) {
-        setRGB(0, 150, 0);       // 🟢 สภาวะปกติ: ไฟเขียวติดสว่าง!
+        setRGB(0, 150, 0);       // 🟢 สภาวะปกติ: ไฟเขียวติดสว่างเสมอ!
       } else if (current_led_mode == 1) {
         setRGB(255, 120, 0);     // 🟠 ส้ม
       } else if (current_led_mode == 3) {
@@ -1866,8 +1856,8 @@ void loop() {
     }
   }
 
-  // หากออกจากโหมดกะพริบ (2 หรือ 4) ให้รีเซ็ต prev_led_mode เพื่อให้ไฟเขียวกลับมาติดทันที
-  if (current_led_mode != 2 && current_led_mode != 4 && (prev_led_mode == 2 || prev_led_mode == 4)) {
+  // หากออกจากโหมดกะพริบ (2) ให้รีเซ็ต prev_led_mode เพื่อให้ไฟเขียวกลับมาติดทันที
+  if (current_led_mode != 2 && prev_led_mode == 2) {
     prev_led_mode = -1;
   }
 }
