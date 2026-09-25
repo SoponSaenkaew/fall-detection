@@ -26,7 +26,9 @@ func (s *Service) GetAll(userID uint) ([]iot.Group, error) {
 }
 
 func (s *Service) Delete(groupID uint, userID uint) error {
-	// ลบกลุ่มโดยเช็คว่าเป็นเจ้าของกลุ่ม (userID) จริงไหม เพื่อความปลอดภัยค่ะ
+	// Soft delete อุปกรณ์และการแจ้งเตือนในกลุ่มนี้ (ประวัติเหตุการณ์ยังคงอยู่ใน DB ไม่สูญหาย)
+	s.db.Where("group_id = ?", groupID).Delete(&iot.Device{})
+	s.db.Where("group_id = ?", groupID).Delete(&iot.NotificationConfig{})
 	return s.db.Where("id = ? AND user_id = ?", groupID, userID).Delete(&iot.Group{}).Error
 }
 

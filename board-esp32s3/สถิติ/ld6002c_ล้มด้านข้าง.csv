@@ -1,0 +1,21 @@
+﻿Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Detection_Latency_ms,Confirm_Time_ms,Result
+1,Lateral Fall,FALL,FALL,18979,35,TP
+2,Lateral Fall,FALL,FALL,18675,35,TP
+3,Lateral Fall,FALL,FALL,19665,40,TP
+4,Lateral Fall,FALL,FALL,19737,35,TP
+5,Lateral Fall,FALL,FALL,18739,35,TP
+6,Lateral Fall,FALL,FALL,41435,41,TP
+7,Lateral Fall,FALL,FALL,35929,36,TP
+8,Lateral Fall,FALL,FALL,18730,35,TP
+9,Lateral Fall,FALL,FALL,21515,35,TP
+10,Lateral Fall,FALL,FALL,19218,34,TP
+11,Lateral Fall,FALL,FALL,40017,52,TP
+12,Lateral Fall,FALL,FALL,40257,35,TP
+13,Lateral Fall,FALL,FALL,47799,35,TP
+14,Lateral Fall,FALL,FALL,35813,35,TP
+15,Lateral Fall,FALL,FALL,28192,35,TP
+16,Lateral Fall,FALL,FALL,19344,35,TP
+17,Lateral Fall,FALL,FALL,34534,35,TP
+18,Lateral Fall,FALL,FALL,142452,46,TP
+19,Lateral Fall,FALL,FALL,15760,35,TP
+20,Lateral Fall,FALL,FALL,72323,47,TP

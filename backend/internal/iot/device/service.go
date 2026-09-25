@@ -3,6 +3,8 @@ package device
 import (
 	"backend/internal/iot"
 	"backend/internal/iot/notifier"
+	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -16,10 +18,25 @@ func NewService(db *gorm.DB) *Service {
 }
 
 func (s *Service) Register(groupID uint, deviceID, name string) error {
+	// 1. ตรวจสอบว่าเคยมี Device ID นี้ในฐานข้อมูลหรือไม่ (รวมถึงที่ถูก Soft Delete ไว้)
+	var existing iot.Device
+	err := s.db.Unscoped().Where("device_id = ?", deviceID).First(&existing).Error
+	if err == nil {
+		// หากเคยมีอยู่แล้ว ให้ Restore แถวเดิมกลับมา ผูกกับกลุ่มใหม่ โดยที่ประวัติ Event เดิมยังคงอยู่ครบถ้วน
+		return s.db.Unscoped().Model(&existing).Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"group_id":   groupID,
+			"name":       name,
+			"status":     "offline",
+		}).Error
+	}
+
+	// 2. ถ้าเป็น Device ID ใหม่ ให้สร้างแถวใหม่ตามปกติ
 	return s.db.Create(&iot.Device{
 		DeviceID: deviceID,
 		Name:     name,
 		GroupID:  groupID,
+		Status:   "offline",
 	}).Error
 }
 
@@ -33,8 +50,19 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 		meta = "{}"
 	}
 
-	// บันทึก Event ลง DB ปกติ
-	event := iot.DeviceEvent{DeviceID: dev.ID, Type: evType, Name: name, Value: val, Metadata: meta}
+	// บันทึก Event ลง DB พร้อมกำหนดสถานะ
+	status := "normal"
+	if name == "fall" || name == "prolonged_stay" {
+		status = "pending"
+	}
+	event := iot.DeviceEvent{
+		DeviceID: dev.ID,
+		Type:     evType,
+		Name:     name,
+		Value:    val,
+		Metadata: meta,
+		Status:   status,
+	}
 	s.db.Create(&event)
 
 	updates := make(map[string]interface{})
@@ -43,7 +71,7 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	case "status":
 		updates["status"] = name // เช่น online / offline
 	case "event":
-		updates["latest_event"] = name          // เช่น fall / enter / exit
+		updates["latest_event"] = name          // เช่น fall / enter / exit / prolonged_stay
 		updates["latest_event_metadata"] = meta // บันทึก Metadata ล่าสุดด้วย
 	}
 
@@ -51,18 +79,61 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 	// ใน service.go ของ device
 	// backend/internal/iot/device/service.go
 	if name == "fall" {
+		var group iot.Group
+		groupName := ""
+		if err := s.db.First(&group, dev.GroupID).Error; err == nil && group.Name != "" {
+			groupName = group.Name
+		}
+
 		var configs []iot.NotificationConfig
 		// ดึงการตั้งค่าทั้งหมดที่เปิดใช้งาน (Enabled) ของกลุ่มนี้
 		s.db.Where("group_id = ? AND enabled = ?", dev.GroupID, true).Find(&configs)
 
+		loc := time.FixedZone("Asia/Bangkok", 7*3600)
+		timeStr := time.Now().In(loc).Format("15:04 น. (02/01/2006)")
+
+		var msg string
+		if groupName != "" {
+			msg = fmt.Sprintf("🚨 [แจ้งเตือนเหตุฉุกเฉิน: ตรวจพบคนหกล้ม!]\n📍 สถานที่: %s\n🚪 ห้อง/จุดติดตั้ง: %s\n⏰ เวลา: %s\n⚠️ กรุณาเข้าตรวจสอบและให้ความช่วยเหลือโดยด่วน!", groupName, dev.Name, timeStr)
+		} else {
+			msg = fmt.Sprintf("🚨 [แจ้งเตือนเหตุฉุกเฉิน: ตรวจพบคนหกล้ม!]\n🚪 ห้อง/จุดติดตั้ง: %s\n⏰ เวลา: %s\n⚠️ กรุณาเข้าตรวจสอบและให้ความช่วยเหลือโดยด่วน!", dev.Name, timeStr)
+		}
+
 		for _, cfg := range configs {
-			msg := "[แจ้งเตือนระบบตรวจจับการล้ม] ตรวจพบเหตุการณ์การล้มในพื้นที่: " + dev.Name
 			switch cfg.Type {
 			case "line":
 				// ส่งผ่าน LINE Messaging API
 				go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, msg)
 			case "webhook":
 				// ส่งผ่าน Webhook ทั่วไป (เช่น Discord)
+				go notifier.SendSimpleNotification("webhook", cfg.TargetURL, msg)
+			}
+		}
+	} else if name == "prolonged_stay" {
+		var group iot.Group
+		groupName := ""
+		if err := s.db.First(&group, dev.GroupID).Error; err == nil && group.Name != "" {
+			groupName = group.Name
+		}
+
+		var configs []iot.NotificationConfig
+		s.db.Where("group_id = ? AND enabled = ?", dev.GroupID, true).Find(&configs)
+
+		loc := time.FixedZone("Asia/Bangkok", 7*3600)
+		timeStr := time.Now().In(loc).Format("15:04 น. (02/01/2006)")
+
+		var msg string
+		if groupName != "" {
+			msg = fmt.Sprintf("⏳ [แจ้งเตือน: เข้าห้องน้ำนานเกินกำหนด]\n📍 สถานที่: %s\n🚪 ห้อง/จุดติดตั้ง: %s\n⏰ เวลา: %s\n⚠️ มีการใช้งานห้องน้ำต่อเนื่องนานเกินกำหนด กรุณาเข้าตรวจสอบความปลอดภัย", groupName, dev.Name, timeStr)
+		} else {
+			msg = fmt.Sprintf("⏳ [แจ้งเตือน: เข้าห้องน้ำนานเกินกำหนด]\n🚪 ห้อง/จุดติดตั้ง: %s\n⏰ เวลา: %s\n⚠️ มีการใช้งานห้องน้ำต่อเนื่องนานเกินกำหนด กรุณาเข้าตรวจสอบความปลอดภัย", dev.Name, timeStr)
+		}
+
+		for _, cfg := range configs {
+			switch cfg.Type {
+			case "line":
+				go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, msg)
+			case "webhook":
 				go notifier.SendSimpleNotification("webhook", cfg.TargetURL, msg)
 			}
 		}
@@ -83,6 +154,7 @@ func (s *Service) GetNotificationConfigs(groupID uint) ([]iot.NotificationConfig
 }
 
 func (s *Service) Delete(deviceID string) error {
+	// ทำการ Soft Delete ตัวอุปกรณ์ออกจากหน้ากลุ่ม แต่เก็บประวัติ DeviceEvent และ DeviceSetting ไว้ในระบบ ไม่สูญหาย
 	return s.db.Where("device_id = ?", deviceID).Delete(&iot.Device{}).Error
 }
 
@@ -107,4 +179,160 @@ func (s *Service) GetSettings(deviceID string) (iot.DeviceSetting, error) {
 	var settings iot.DeviceSetting
 	err := s.db.Where("device_id = ?", deviceID).First(&settings).Error
 	return settings, err
+}
+
+// โครงสร้างข้อมูลสำหรับส่งออกประวัติเหตุการณ์ไปยัง Frontend
+type EventItem struct {
+	ID             uint       `json:"id"`
+	CreatedAt      time.Time  `json:"created_at"`
+	DeviceID       uint       `json:"device_id"`
+	DeviceCode     string     `json:"device_code"`
+	DeviceName     string     `json:"device_name"`
+	GroupID        uint       `json:"group_id"`
+	GroupName      string     `json:"group_name"`
+	Type           string     `json:"type"`
+	Name           string     `json:"name"`
+	Value          string     `json:"value"`
+	Metadata       string     `json:"metadata"`
+	Status         string     `json:"status"`
+	ResolvedAt     *time.Time `json:"resolved_at"`
+	ResolvedBy     string     `json:"resolved_by"`
+	ResolutionNote string     `json:"resolution_note"`
+}
+
+type EventFilter struct {
+	UserID  uint
+	GroupID uint
+	Name    string
+	Status  string
+	Search  string
+	Limit   int
+	Offset  int
+}
+
+type EventStats struct {
+	TotalFalls    int64 `json:"total_falls"`
+	PendingFalls  int64 `json:"pending_falls"`
+	ResolvedFalls int64 `json:"resolved_falls"`
+	OnlineDevices int64 `json:"online_devices"`
+	TotalDevices  int64 `json:"total_devices"`
+}
+
+// ดึงประวัติเหตุการณ์พร้อมข้อมูลชื่อห้องและกลุ่มสถานที่
+func (s *Service) GetEvents(filter EventFilter) ([]EventItem, int64, error) {
+	query := s.db.Table("device_events").
+		Select(`device_events.id, 
+		        device_events.created_at, 
+		        device_events.device_id, 
+		        COALESCE(devices.device_id, '') as device_code, 
+		        COALESCE(devices.name, 'ไม่ทราบอุปกรณ์') as device_name, 
+		        COALESCE(devices.group_id, 0) as group_id, 
+		        COALESCE(groups.name, 'ทั่วไป') as group_name, 
+		        device_events.type, 
+		        device_events.name, 
+		        device_events.value, 
+		        device_events.metadata, 
+		        COALESCE(device_events.status, 'normal') as status, 
+		        device_events.resolved_at, 
+		        device_events.resolved_by, 
+		        device_events.resolution_note`).
+		Joins("LEFT JOIN devices ON devices.id = device_events.device_id").
+		Joins("LEFT JOIN groups ON groups.id = devices.group_id")
+
+	// กรองตาม User ที่เป็นเจ้าของกลุ่ม (ถ้ามีระบุ)
+	if filter.UserID > 0 {
+		query = query.Where("(groups.user_id = ? OR groups.user_id IS NULL OR groups.user_id = 0)", filter.UserID)
+	}
+
+	if filter.GroupID > 0 {
+		query = query.Where("devices.group_id = ?", filter.GroupID)
+	}
+
+	if filter.Name != "" && filter.Name != "all" {
+		query = query.Where("device_events.name = ?", filter.Name)
+	}
+
+	if filter.Status != "" && filter.Status != "all" {
+		query = query.Where("device_events.status = ?", filter.Status)
+	}
+
+	if filter.Search != "" {
+		likeSearch := "%" + filter.Search + "%"
+		query = query.Where("(devices.name ILIKE ? OR devices.device_id ILIKE ? OR groups.name ILIKE ?)", likeSearch, likeSearch, likeSearch)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if filter.Limit <= 0 {
+		filter.Limit = 50
+	}
+
+	var events []EventItem
+	err := query.Order("device_events.created_at DESC").
+		Limit(filter.Limit).
+		Offset(filter.Offset).
+		Scan(&events).Error
+
+	return events, total, err
+}
+
+// อัปเดตสถานะการเข้าช่วยเหลือ (Resolve / False Alarm)
+func (s *Service) ResolveEvent(eventID uint, status, resolvedBy, note string) error {
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status":          status,
+		"resolved_at":     &now,
+		"resolved_by":     resolvedBy,
+		"resolution_note": note,
+	}
+	return s.db.Model(&iot.DeviceEvent{}).Where("id = ?", eventID).Updates(updates).Error
+}
+
+// ดึงตัวเลขสถิติภาพรวมสำหรับ Dashboard สรุปผล
+func (s *Service) GetEventStats(userID uint, groupID uint) (EventStats, error) {
+	var stats EventStats
+
+	// นับเหตุการณ์ล้ม
+	fallQuery := s.db.Model(&iot.DeviceEvent{}).Where("name = ?", "fall")
+	if groupID > 0 {
+		fallQuery = fallQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
+			Where("devices.group_id = ?", groupID)
+	}
+	fallQuery.Count(&stats.TotalFalls)
+
+	// นับเหตุการณ์ล้มที่รอการช่วยเหลือ
+	pendingQuery := s.db.Model(&iot.DeviceEvent{}).
+		Where("name = ? AND status = ?", "fall", "pending")
+	if groupID > 0 {
+		pendingQuery = pendingQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
+			Where("devices.group_id = ?", groupID)
+	}
+	pendingQuery.Count(&stats.PendingFalls)
+
+	// นับเหตุการณ์ล้มที่ช่วยเหลือแล้ว
+	resolvedQuery := s.db.Model(&iot.DeviceEvent{}).
+		Where("name = ? AND status = ?", "fall", "resolved")
+	if groupID > 0 {
+		resolvedQuery = resolvedQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
+			Where("devices.group_id = ?", groupID)
+	}
+	resolvedQuery.Count(&stats.ResolvedFalls)
+
+	// อุปกรณ์ออนไลน์ / ทั้งหมด
+	devQuery := s.db.Model(&iot.Device{})
+	if groupID > 0 {
+		devQuery = devQuery.Where("group_id = ?", groupID)
+	}
+	devQuery.Count(&stats.TotalDevices)
+
+	devOnlineQuery := s.db.Model(&iot.Device{}).Where("status = ?", "online")
+	if groupID > 0 {
+		devOnlineQuery = devOnlineQuery.Where("group_id = ?", groupID)
+	}
+	devOnlineQuery.Count(&stats.OnlineDevices)
+
+	return stats, nil
 }

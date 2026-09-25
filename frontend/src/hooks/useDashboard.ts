@@ -20,6 +20,7 @@ export const useDashboard = () => {
   const [showSettings, setShowSettings] = useState({ show: false, deviceId: "" });
   const [currentSettings, setCurrentSettings] = useState({
     device_id: "",
+    stay_timeout_minutes: 30.0,
     fall_threshold: 0.5,
     mount_height: 2.0,
     room_width: 4.0,
@@ -113,6 +114,7 @@ export const useDashboard = () => {
       // ถ้ายังไม่มีค่าใน DB ให้ใช้ค่าเริ่มต้นและผูกกับ DeviceID นั้นๆ ค่ะ
       setCurrentSettings({
         device_id: deviceId,
+        stay_timeout_minutes: 30.0,
         fall_threshold: 0.5,
         mount_height: 2.0,
         room_width: 4.0,

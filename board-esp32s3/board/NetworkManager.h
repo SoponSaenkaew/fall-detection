@@ -274,6 +274,15 @@ inline bool fetchDeviceSettings() {
       room_length = temp_length;
       sizeChanged = true;
     }
+    float temp_stay_timeout = getJsonFloatValue(payload, "stay_timeout_minutes");
+    if (temp_stay_timeout > 0) {
+      stay_timeout_minutes = temp_stay_timeout;
+      prolonged_stay_timeout = (unsigned long)(stay_timeout_minutes * 60.0 * 1000.0);
+      Serial.print("⏱️ [CONFIG] Updated stay_timeout_minutes: ");
+      Serial.print(stay_timeout_minutes);
+      Serial.println(" min");
+    }
+
 #if USE_LD6002C
     if (sizeChanged) {
       sendRoomSizeToRadar(room_width, room_length);
@@ -281,7 +290,7 @@ inline bool fetchDeviceSettings() {
     }
 #endif
     
-    saveConfigToNVS(fall_threshold, mount_height, room_width, room_length);
+    saveConfigToNVS(fall_threshold, mount_height, room_width, room_length, stay_timeout_minutes);
     http.end();
     return true;
   } else {

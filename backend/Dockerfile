@@ -20,8 +20,8 @@ RUN go build -o server ./cmd/server/main.go
 # Stage 2: Runtime stage (ใช้ alpine ตัวเล็กเพื่อความประหยัดพื้นที่)
 FROM alpine:latest
 
-# ติดตั้ง ca-certificates สำหรับการส่ง HTTPS (สำคัญมากสำหรับการส่ง LINE/Discord!)
-RUN apk --no-cache add ca-certificates
+# ติดตั้ง ca-certificates สำหรับการส่ง HTTPS และ tzdata สำหรับเวลา
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 

@@ -1,5 +1,5 @@
 "use client";
-import { X, Settings2, Ruler, ArrowUpDown, Maximize } from 'lucide-react';
+import { X, Settings2, Ruler, ArrowUpDown, Maximize, Clock } from 'lucide-react';
 
 export default function DeviceSettingsModal({ show, onClose, onSubmit, settings, setSettings }: any) {
   if (!show) return null;
@@ -24,6 +24,19 @@ export default function DeviceSettingsModal({ show, onClose, onSubmit, settings,
         </div>
 
         <div className="space-y-5">
+          {/* แจ้งเตือนเข้าห้องน้ำนานเกิน */}
+          <div>
+            <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">
+              <Clock size={16} className="mr-2 text-indigo-400" /> แจ้งเตือนเข้าห้องน้ำนานเกินกำหนด (นาที)
+            </label>
+            <input type="number" step="0.5" min="0.5" className="w-full border p-2 rounded-lg" 
+              value={safeValue(settings.stay_timeout_minutes)} 
+              onChange={(e) => handleNumberChange('stay_timeout_minutes', e.target.value)} 
+              placeholder="30"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">* ส่งแจ้งเตือนทาง LINE หากใช้งานต่อเนื่องเกินเวลานี้ (เริ่มต้น 30 นาที, ปรับลดเพื่อทดสอบได้)</p>
+          </div>
+
           {/* เกณฑ์การล้ม */}
           <div>
             <label className="flex items-center text-sm font-semibold text-gray-700 mb-1">

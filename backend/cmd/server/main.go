@@ -7,9 +7,11 @@ import (
 	"backend/internal/iot/device"
 	"backend/internal/iot/group"
 	"backend/internal/iot"
+	"backend/internal/middleware"
 	"backend/internal/mqtt"
 	"backend/internal/user"
 	"backend/internal/ws"
+	"net/http"
 	"os"
 	"strings"
 
@@ -51,7 +53,7 @@ func main() {
 			LatestEvent:         "fall",
 			LatestEventMetadata: `{"fall_x": -0.3, "fall_y": 1.5}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "B1_R101", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R101", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0, StayTimeoutMinutes: 30.0})
 
 		// ห้องน้ำ 102: สถานะปกติ (มีประวัติเส้นทางการเดินเข้าหาชักโครกและเดินกลับออกมา)
 		db.Create(&iot.Device{
@@ -62,7 +64,7 @@ func main() {
 			LatestEvent:         "exit",
 			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.0, 2.8], [-0.4, 2.0], [-0.2, 1.2], [0.0, 0.6], [0.0, 1.2], [0.2, 2.2], [0.0, 3.8]]}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "B1_R102", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R102", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0, StayTimeoutMinutes: 30.0})
 
 		// ห้องน้ำ 103: สถานะมีคนอยู่ (กำลังใช้งาน)
 		db.Create(&iot.Device{
@@ -72,7 +74,7 @@ func main() {
 			Status:      "online",
 			LatestEvent: "enter",
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "B1_R103", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R103", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0, StayTimeoutMinutes: 30.0})
 
 		// ห้องน้ำ 104: สถานะปกติ (มีประวัติเส้นทางสั้นๆ และเดินกลับออกมา)
 		db.Create(&iot.Device{
@@ -83,7 +85,7 @@ func main() {
 			LatestEvent:         "exit",
 			LatestEventMetadata: `{"path": [[0.0, 3.8], [0.2, 2.5], [0.0, 1.5], [0.0, 0.7], [0.0, 1.5], [-0.2, 2.5], [0.0, 3.8]]}`,
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "B1_R104", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R104", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0, StayTimeoutMinutes: 30.0})
 
 		// ห้องน้ำ 105: สถานะเครื่องปิด (Offline)
 		db.Create(&iot.Device{
@@ -93,7 +95,7 @@ func main() {
 			Status:      "offline",
 			LatestEvent: "exit",
 		})
-		db.Create(&iot.DeviceSetting{DeviceID: "B1_R105", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0})
+		db.Create(&iot.DeviceSetting{DeviceID: "B1_R105", FallThreshold: 0.5, MountHeight: 2.0, RoomWidth: 3.0, RoomLength: 4.0, StayTimeoutMinutes: 30.0})
 	}
 
 	// Setup Services & Handlers
@@ -155,6 +157,7 @@ func main() {
 		v1.POST("/login", loginHandler.Handle)
 
 		protected := v1.Group("/iot")
+		protected.Use(middleware.AuthMiddleware())
 		{
 			// จัดการสถานที่
 			protected.POST("/groups", grpHandler.Create)
@@ -173,10 +176,38 @@ func main() {
 			protected.GET("/notifications", devHandler.GetNotificationConfigs)
 			protected.POST("/notifications", devHandler.AddNotificationConfig)
 
+			// จัดการประวัติเหตุการณ์และการเข้าช่วยเหลือ
+			protected.GET("/events", devHandler.GetEvents)
+			protected.PUT("/events/:id/resolve", devHandler.ResolveEvent)
+			protected.GET("/events/stats", devHandler.GetStats)
+
 			protected.GET("/profile", func(c *gin.Context) {
-				c.JSON(200, gin.H{
-					"message": "ยินดีต้อนรับเข้าสู่ระบบข้อมูลส่วนตัว",
-					"your_id": "ผู้ดูแลระบบ (System Admin)",
+				val, exists := c.Get("user_id")
+				if !exists {
+					c.JSON(http.StatusUnauthorized, gin.H{"error": "ไม่พบข้อมูลผู้ใช้งาน"})
+					return
+				}
+				var uid uint
+				switch v := val.(type) {
+				case float64:
+					uid = uint(v)
+				case uint:
+					uid = v
+				case int:
+					uid = uint(v)
+				}
+				var u user.User
+				if err := db.First(&u, uid).Error; err != nil {
+					c.JSON(http.StatusOK, gin.H{
+						"your_id": "ผู้ดูแลระบบ (System Admin)",
+						"email":   "admin@example.com",
+					})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{
+					"your_id": u.Username,
+					"email":   u.Email,
+					"user_id": u.ID,
 				})
 			})
 		}

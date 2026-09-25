@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Dashboard/Header';
 import { groupService } from '@/services/api';
 import { Layout, Smartphone, Clock, UserCheck, AlertTriangle, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function BuildingsPage() {
+  const router = useRouter();
   const [groups, setGroups] = useState<any[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
@@ -23,8 +25,14 @@ export default function BuildingsPage() {
     }
   };
 
-  // ตรวจจับเหตุการณ์เรียลไทม์ผ่าน WebSocket
+  // ตรวจสอบสิทธิ์การเข้าใช้งานและเชื่อมต่อ WebSocket
   useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
     fetchData();
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = window.location.host;
@@ -54,8 +62,8 @@ export default function BuildingsPage() {
   const activeGroup = groups.find(g => g.ID === selectedGroupId);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      {/* 1. Header ส่วนนำทางแบบไม่ต้องใช้ Auth */}
+    <div className="p-4 sm:p-8 bg-gray-50 min-h-screen">
+      {/* 1. Header ส่วนนำทาง */}
       <Header />
 
       {/* แถบแจ้งเตือนภัยแบบเร่งด่วนด้านบนสุด */}
@@ -106,6 +114,7 @@ export default function BuildingsPage() {
                 const isFall = dev.latest_event === 'fall';
                 const isEnter = dev.latest_event === 'enter';
                 const isExit = dev.latest_event === 'exit';
+                const isProlongedStay = dev.latest_event === 'prolonged_stay';
 
                 return (
                   <div 
@@ -113,6 +122,8 @@ export default function BuildingsPage() {
                     className={`bg-white p-4 rounded-xl border transition-all h-auto flex flex-col justify-between ${
                       isFall 
                         ? 'border-red-500 ring-4 ring-red-100 shadow-lg' 
+                        : isProlongedStay
+                        ? 'border-orange-400 ring-2 ring-orange-100 shadow-md'
                         : 'border-gray-200 shadow-sm hover:shadow-md'
                     }`}
                   >
@@ -138,10 +149,16 @@ export default function BuildingsPage() {
                             <span>สถานะ:</span>
                           </div>
                           <span className={`text-sm font-bold whitespace-nowrap flex-shrink-0 ${
-                            isFall ? 'text-red-500 animate-bounce' : 'text-blue-600'
+                            isFall 
+                              ? 'text-red-500 animate-bounce' 
+                              : isProlongedStay
+                              ? 'text-orange-600'
+                              : 'text-blue-600'
                           }`}>
                             {isFall 
                               ? 'คนล้ม!!! ⚠️' 
+                              : isProlongedStay
+                              ? 'อยู่นานเกินกำหนด ⏳'
                               : isEnter 
                               ? 'กำลังใช้งาน 🚪' 
                               : isExit 

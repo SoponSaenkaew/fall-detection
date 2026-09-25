@@ -1,6 +1,8 @@
 package iot
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -16,7 +18,7 @@ type Device struct {
 	gorm.Model
 	DeviceID            string `gorm:"unique;not null" json:"device_id"` // รหัส Hardware ID ของเซนเซอร์
 	Name                string `json:"name"`                             // ชื่อเรียก เช่น "ห้องนอน 1"
-	Status              string `gorm:"default:'online'" json:"status"`   // สถานะเครื่อง
+	Status              string `gorm:"default:'offline'" json:"status"`  // สถานะเครื่อง (เริ่มต้นเป็น offline)
 	LatestEvent         string `json:"latest_event"`                     // ค่าที่อาจจะเก็บไว้ เช่น "fall", "enter", "exit" หรือค่าอื่นๆ ที่ส่งมาจากอุปกรณ์
 	LatestEventMetadata string `json:"latest_event_metadata"`            // เก็บข้อมูล Metadata ล่าสุด เช่น พิกัดหรือเส้นทางเดิน
 	GroupID             uint   `json:"group_id"`                         // สังกัดกลุ่มไหน
@@ -24,11 +26,15 @@ type Device struct {
 
 type DeviceEvent struct {
 	gorm.Model
-	DeviceID uint   `gorm:"index;not null" json:"device_id"`
-	Type     string `gorm:"index;not null" json:"type"` // "event" หรือ "status"
-	Name     string `gorm:"index;not null" json:"name"` // "fall", "enter", "exit", "online"
-	Value    string `json:"value"`                      // ค่าที่ส่งมา (ถ้ามี)
-	Metadata string `gorm:"type:jsonb" json:"metadata"` // เก็บข้อมูล Custom อื่นๆ เป็น JSON
+	DeviceID       uint       `gorm:"index;not null" json:"device_id"`
+	Type           string     `gorm:"index;not null" json:"type"` // "event" หรือ "status"
+	Name           string     `gorm:"index;not null" json:"name"` // "fall", "enter", "exit", "online"
+	Value          string     `json:"value"`                      // ค่าที่ส่งมา (ถ้ามี)
+	Metadata       string     `gorm:"type:jsonb" json:"metadata"` // เก็บข้อมูล Custom อื่นๆ เป็น JSON
+	Status         string     `gorm:"default:'pending';index" json:"status"` // "pending", "resolved", "false_alarm", "normal"
+	ResolvedAt     *time.Time `json:"resolved_at"`                           // วันเวลาที่เข้าช่วยเหลือ
+	ResolvedBy     string     `json:"resolved_by"`                           // ผู้เข้าช่วยเหลือ
+	ResolutionNote string     `json:"resolution_note"`                       // บันทึกผลการเข้าช่วยเหลือ
 }
 
 type DeviceSetting struct {
@@ -36,8 +42,9 @@ type DeviceSetting struct {
 	DeviceID      string  `gorm:"uniqueIndex;not null" json:"device_id"`
 	FallThreshold float64 `gorm:"default:0.5" json:"fall_threshold"` // เกณฑ์การล้ม (เช่น ความเร็วหรือระยะที่เปลี่ยน)
 	MountHeight   float64 `gorm:"default:2.0" json:"mount_height"`   // ความสูงของเซนเซอร์จากพื้น (เมตร)
-	RoomWidth     float64 `gorm:"default:4.0" json:"room_width"`     // ความกว้างของห้อง (เมตร)
-	RoomLength    float64 `gorm:"default:4.0" json:"room_length"`    // ความยาวของห้อง (เมตร)
+	RoomWidth          float64 `gorm:"default:4.0" json:"room_width"`               // ความกว้างของห้อง (เมตร)
+	RoomLength         float64 `gorm:"default:4.0" json:"room_length"`              // ความยาวของห้อง (เมตร)
+	StayTimeoutMinutes float64 `gorm:"default:30.0" json:"stay_timeout_minutes"`     // ระยะเวลาแจ้งเตือนเข้าห้องน้ำนานเกิน (นาที)
 }
 
 type NotificationConfig struct {

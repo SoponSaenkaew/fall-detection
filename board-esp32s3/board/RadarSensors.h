@@ -221,11 +221,7 @@ inline void readRadar() {
       else if (msgType == 0x0E04 || msgType == 0x0E08 || msgType == 0x0E0C) {
         Serial.printf("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x%04X\n", msgType);
       }
-      // ค. เฟรมตรวจพบคนอยู่ในห้อง (0x0F09)
-      else if (msgType == 0x0F09) {
-        // payload[0] == 0x01 คือมีคนอยู่ในห้อง
-      }
-      // ง. เฟรมความสูงเป้าหมาย (0x0E0E)
+      // ค. เฟรมความสูงเป้าหมาย (0x0E0E)
       else if (msgType == 0x0E0E && dataLen == 4) {
         float target_height;
         memcpy(&target_height, payload, 4);
@@ -284,13 +280,24 @@ inline void readLD2410() {
     
     if (current_event == "exit") {
       current_event = "enter";
+      enter_start_time = millis();
+      prolonged_stay_alerted = false;
       sendEvent("event", "enter", "กำลังใช้งาน (ตรวจพบคนเข้าห้องน้ำ)");
       resetRadarFallFlags();
+    } else if (current_event == "enter" && !prolonged_stay_alerted) {
+      // ตรวจสอบการใช้งานห้องน้ำต่อเนื่องนานเกินกำหนด
+      if (enter_start_time > 0 && (millis() - enter_start_time >= prolonged_stay_timeout)) {
+        prolonged_stay_alerted = true;
+        Serial.println("\n⏳ [PROLONGED STAY] Person stayed in bathroom too long! Sending silent LINE alert...");
+        sendEvent("event", "prolonged_stay", "เข้าห้องน้ำนานเกินกำหนด");
+      }
     }
   } else {
     // 1. กรณีคนเดินออกจากห้องน้ำตามปกติ
-    if (current_event == "enter" && (millis() - last_presence_time > presence_timeout)) {
+    if ((current_event == "enter" || current_event == "prolonged_stay") && (millis() - last_presence_time > presence_timeout)) {
       current_event = "exit";
+      enter_start_time = 0;
+      prolonged_stay_alerted = false;
       sendEvent("event", "exit", "ว่าง (ไม่มีคนอยู่)");
       resetRadarFallFlags();
     }
@@ -299,6 +306,8 @@ inline void readLD2410() {
     else if (current_event == "fall" && (millis() - last_presence_time > fall_empty_room_timeout)) {
       Serial.println("\nℹ️ [LD2410] Room empty for >20s during fall alert. Auto-recovering to exit.");
       current_event = "exit";
+      enter_start_time = 0;
+      prolonged_stay_alerted = false;
       sendEvent("event", "exit", "ว่าง (รีเซ็ตอัตโนมัติ/ห้องว่าง)");
       resetRadarFallFlags();
     }

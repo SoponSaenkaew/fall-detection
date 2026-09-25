@@ -1,0 +1,21 @@
+﻿Trial_No,Scenario_Name,Ground_Truth,Radar_Output,Detection_Latency_ms,Confirm_Time_ms,Result
+1,Forward Fall,FALL,FALL,28150,47,TP
+2,Forward Fall,FALL,FALL,18035,35,TP
+3,Forward Fall,FALL,FALL,17599,40,TP
+4,Forward Fall,FALL,FALL,50862,36,TP
+5,Forward Fall,FALL,FALL,77990,35,TP
+6,Forward Fall,FALL,FALL,41294,35,TP
+7,Forward Fall,FALL,FALL,18230,35,TP
+8,Forward Fall,FALL,FALL,69741,35,TP
+9,Forward Fall,FALL,FALL,68677,34,TP
+10,Forward Fall,FALL,FALL,18758,36,TP
+11,Forward Fall,FALL,FALL,20033,34,TP
+12,Forward Fall,FALL,FALL,16281,36,TP
+13,Forward Fall,FALL,FALL,19822,35,TP
+14,Forward Fall,FALL,FALL,19047,35,TP
+15,Forward Fall,FALL,FALL,16998,35,TP
+16,Forward Fall,FALL,FALL,17016,35,TP
+17,Forward Fall,FALL,FALL,44301,47,TP
+18,Forward Fall,FALL,FALL,63443,47,TP
+19,Forward Fall,FALL,FALL,20406,35,TP
+20,Forward Fall,FALL,FALL,28128,35,TP

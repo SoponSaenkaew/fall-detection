@@ -7,3 +7,4 @@ Thumbs.db
 **/build/
 .vscode/
 .theia/
+*.mp4

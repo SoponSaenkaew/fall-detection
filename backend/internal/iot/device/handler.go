@@ -3,6 +3,7 @@ package device
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"backend/internal/iot"
 	"backend/internal/ws"
@@ -141,4 +142,129 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, settings)
+}
+
+// GET /api/v1/iot/events
+func (h *Handler) GetEvents(c *gin.Context) {
+	var filter EventFilter
+
+	// ดึง userID จาก Context (ถ้ามี AuthMiddleware)
+	if val, exists := c.Get("user_id"); exists {
+		switch v := val.(type) {
+		case float64:
+			filter.UserID = uint(v)
+		case uint:
+			filter.UserID = v
+		case int:
+			filter.UserID = uint(v)
+		}
+	}
+
+	if gID := c.Query("group_id"); gID != "" {
+		if id, err := strconv.ParseUint(gID, 10, 32); err == nil {
+			filter.GroupID = uint(id)
+		}
+	}
+
+	filter.Name = c.Query("name")
+	filter.Status = c.Query("status")
+	filter.Search = c.Query("search")
+
+	limit := 50
+	if l := c.Query("limit"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil && val > 0 {
+			limit = val
+		}
+	}
+	filter.Limit = limit
+
+	offset := 0
+	if p := c.Query("page"); p != "" {
+		if page, err := strconv.Atoi(p); err == nil && page > 1 {
+			offset = (page - 1) * limit
+		}
+	}
+	filter.Offset = offset
+
+	events, total, err := h.service.GetEvents(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ไม่สามารถดึงข้อมูลประวัติเหตุการณ์ได้: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"events": events,
+		"total":  total,
+		"limit":  limit,
+	})
+}
+
+// PUT /api/v1/iot/events/:id/resolve
+func (h *Handler) ResolveEvent(c *gin.Context) {
+	idParam := c.Param("id")
+	eventID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "รหัสเหตุการณ์ไม่ถูกต้อง"})
+		return
+	}
+
+	var req struct {
+		Status         string `json:"status" binding:"required"` // "resolved" หรือ "false_alarm"
+		ResolvedBy     string `json:"resolved_by"`
+		ResolutionNote string `json:"resolution_note"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลสถานะไม่ครบถ้วน"})
+		return
+	}
+
+	// ถ้าไม่ระบุผู้ช่วยเหลือ ให้ดึงจาก Token Username
+	if req.ResolvedBy == "" {
+		if val, exists := c.Get("username"); exists {
+			if uName, ok := val.(string); ok {
+				req.ResolvedBy = uName
+			}
+		}
+		if req.ResolvedBy == "" {
+			req.ResolvedBy = "ผู้ดูแลระบบ"
+		}
+	}
+
+	if err := h.service.ResolveEvent(uint(eventID), req.Status, req.ResolvedBy, req.ResolutionNote); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "อัปเดตสถานะไม่สำเร็จ: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "บันทึกการเข้าช่วยเหลือเรียบร้อยแล้ว! ✨"})
+}
+
+// GET /api/v1/iot/events/stats
+func (h *Handler) GetStats(c *gin.Context) {
+	var userID uint
+	if val, exists := c.Get("user_id"); exists {
+		switch v := val.(type) {
+		case float64:
+			userID = uint(v)
+		case uint:
+			userID = v
+		case int:
+			userID = uint(v)
+		}
+	}
+
+	var groupID uint
+	if gID := c.Query("group_id"); gID != "" {
+		if id, err := strconv.ParseUint(gID, 10, 32); err == nil {
+			groupID = uint(id)
+		}
+	}
+
+	stats, err := h.service.GetEventStats(userID, groupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ดึงสถิติไม่สำเร็จ: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }

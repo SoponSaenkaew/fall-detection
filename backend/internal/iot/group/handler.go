@@ -14,6 +14,23 @@ type Handler struct {
 func NewHandler(s *Service) *Handler {
 	return &Handler{service: s}
 }
+func getUserID(c *gin.Context) (uint, error) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		return 0, fmt.Errorf("ไม่พบข้อมูลผู้ใช้งาน")
+	}
+	switch v := val.(type) {
+	case float64:
+		return uint(v), nil
+	case uint:
+		return v, nil
+	case int:
+		return uint(v), nil
+	default:
+		return 0, fmt.Errorf("ประเภทข้อมูล UserID ไม่ถูกต้อง")
+	}
+}
+
 func (h *Handler) Create(c *gin.Context) {
 	var input struct {
 		Name string `json:"name" binding:"required"`
@@ -23,8 +40,11 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
-	userID := uint(1)
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.service.Create(input.Name, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้างกลุ่มไม่สำเร็จ: " + err.Error()})
@@ -33,10 +53,12 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "สร้างสถานที่สำเร็จแล้ว"})
 }
 
-// เพิ่มใน backend/internal/iot/group/handler.go
 func (h *Handler) GetAll(c *gin.Context) {
-	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
-	userID := uint(1)
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 
 	groups, err := h.service.GetAll(userID)
 	if err != nil {
@@ -48,8 +70,11 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 func (h *Handler) Delete(c *gin.Context) {
 	idStr := c.Param("id") // รับ ID จาก URL
-	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
-	userID := uint(1)
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.service.Delete(uint(castID(idStr)), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลบกลุ่มไม่สำเร็จค่ะ"})
@@ -75,8 +100,11 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	// ดึงข้อมูลรหัสผู้ใช้งาน (user_id) ดีฟอลต์ = 1 สำหรับระบบ Simple No-Auth
-	userID := uint(1)
+	userID, err := getUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.service.Update(uint(castID(idStr)), userID, input.Name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "แก้ไขชื่อกลุ่มไม่สำเร็จค่ะ"})
