@@ -11,3 +11,12 @@ Thumbs.db
 scratch/
 __pycache__/
 *.pyc
+
+# Project Booklet & Thesis Documents
+docs/เอกสารประกอบโปรเจกต์จบ/
+
+# Resume & CV
+*resume*
+*Resume*
+*cv*
+*CV*
