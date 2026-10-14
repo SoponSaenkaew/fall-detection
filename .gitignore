@@ -20,3 +20,11 @@ docs/เอกสารประกอบโปรเจกต์จบ/
 *Resume*
 *cv*
 *CV*
+
+# Audit & Inspection Screenshots
+docs/*.png
+docs/debug_pages/
+docs/final_snapshots/
+
+# Internal Agent Context
+.agents/

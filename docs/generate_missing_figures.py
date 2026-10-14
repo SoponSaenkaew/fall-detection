@@ -255,7 +255,7 @@ def create_dashboard_ui_diagram():
     hbar = patches.Rectangle((3, 87), 94, 6, facecolor="#1E293B", edgecolor="none")
     ax.add_patch(hbar)
     ax.text(6, 90, "SMART FALL DETECTION SYSTEM | Healthcare Admin Portal", ha='left', va='center', fontsize=11, fontweight='bold', color="#F8FAFC")
-    ax.text(93, 90, "Admin: Sopon S. | Status: Online", ha='right', va='center', fontsize=8.5, color="#38BDF8")
+    ax.text(93, 90, "Admin: Administrator | Status: Online", ha='right', va='center', fontsize=8.5, color="#38BDF8")
     
     # 3 Summary Stat Cards
     # Stat 1

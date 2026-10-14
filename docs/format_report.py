@@ -107,11 +107,11 @@ def format_vitae_section(doc):
 
     # Inner table in left cell
     info_items = [
-        ('ชื่อ-นามสกุล', 'นายโสภณ  แสนแก้ว (Mr. Sopon Saenkaew)'),
+        ('ชื่อ-นามสกุล', 'นาย... ... (Mr. ...)'),
         ('รหัสนักศึกษา', 'xxxxxxxxxxx-x'),
         ('วัน-เดือน-ปีเกิด', 'xx xxxxxxxx xxxx'),
         ('ที่อยู่', 'xxx ถนน... ตำบล... อำเภอ... จังหวัด... xxxxx'),
-        ('อีเมล / ช่องทางติดต่อ', 'user@example.com / GitHub: SoponSaenkaew'),
+        ('อีเมล / ช่องทางติดต่อ', 'user@example.com / GitHub: ...'),
     ]
     t_in = c_left.add_table(rows=len(info_items), cols=2)
     remove_borders(t_in)
