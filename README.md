@@ -349,23 +349,23 @@ go run cmd/simulator/main.go
 
 ---
 
-### 9.3 การ Deploy อัปเดตขึ้น Production บน Azure
+### 9.3 การ Deploy ขึ้น Production Server (Cloud Deployment)
+
+> 📖 **คู่มือฉบับเต็ม:** ดูขั้นตอนการเตรียมเซิร์ฟเวอร์, สิ่งที่ต้องเตรียมล่วงหน้า (Prerequisites) และการตั้งค่าอย่างละเอียดได้ที่ [DEPLOYMENT.md](file:///d:/Final%20project/fall-detection/DEPLOYMENT.md)
 
 1. คอมไพล์ Docker Image:
    ```bash
-   docker build -t soponproject.azurecr.io/fall-detection-backend:latest ./backend
-   docker build -t soponproject.azurecr.io/fall-detection-frontend:latest ./frontend
+   docker build -t <YOUR_REGISTRY>/fall-detection-backend:latest ./backend
+   docker build -t <YOUR_REGISTRY>/fall-detection-frontend:latest ./frontend
    ```
-2. อัปโหลดขึ้น Azure Container Registry:
+2. อัปโหลดขึ้น Container Registry:
    ```bash
-   docker push soponproject.azurecr.io/fall-detection-backend:latest
-   docker push soponproject.azurecr.io/fall-detection-frontend:latest
+   docker push <YOUR_REGISTRY>/fall-detection-backend:latest
+   docker push <YOUR_REGISTRY>/fall-detection-frontend:latest
    ```
-3. อัปเดตบน Azure VM ผ่าน SSH:
+3. อัปเดตบนเซิร์ฟเวอร์ผ่าน SSH:
    ```bash
-   cd ~/fall-detection
-   docker compose pull
-   docker compose up -d
+   ssh user@your-server-ip "cd ~/fall-detection && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d"
    ```
 
 ---
