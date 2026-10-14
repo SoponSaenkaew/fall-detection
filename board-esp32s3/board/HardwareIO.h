@@ -6,6 +6,7 @@ inline void setupHardwareIO() {
   pinMode(BUTTON_ENTER_PIN, INPUT_PULLUP);
   pinMode(BUTTON_FALL_PIN, INPUT_PULLUP);
   pinMode(BUTTON_EXIT_PIN, INPUT_PULLUP);
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP); // ปุ่ม BOOT (GPIO 0) สำหรับกดค้าง 3 วิ เพื่อรีเซ็ต Wi-Fi
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, HIGH); // สั่ง HIGH ปิดรีเลย์แบบ Low Trigger ป้องกันเสียงไซเรนดังตอนเปิดเครื่อง

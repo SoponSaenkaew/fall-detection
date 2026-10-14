@@ -3,6 +3,7 @@
 #include "SystemConfig.h"
 
 #include <WiFi.h>
+#include <WiFiManager.h>
 #include <HTTPClient.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
@@ -10,9 +11,35 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
+inline WiFiManager wm;
 inline WiFiClient espClient;
 inline PubSubClient mqttClient(espClient);
 inline unsigned long last_mqtt_reconnect_attempt = 0;
+
+// ล้างข้อมูล Wi-Fi ที่บันทึกไว้ใน Flash Memory แล้วรีบูตเข้าโหมด AP Portal
+inline void resetWiFiSettings() {
+  Serial.println("\n🔄 [WIFI RESET] ทำการล้างข้อมูล Wi-Fi ที่บันทึกไว้ใน Flash Memory...");
+  setRGBColor(255, 100, 0);
+  wm.resetSettings();
+  delay(1000);
+  Serial.println("🔄 [WIFI RESET] รีสตาร์ตบอร์ดเพื่อเปิดโหมดตั้งค่าใหม่ (AP Portal)...");
+  ESP.restart();
+}
+
+// ตรวจสอบการกดปุ่ม BOOT (GPIO 0) ค้าง 3 วินาที เพื่อล้างการตั้งค่า Wi-Fi
+inline void checkResetButton() {
+  if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+    unsigned long pressStart = millis();
+    Serial.println("\n🔘 [BOOT BUTTON] กดปุ่ม BOOT... (หากต้องการรีเซ็ต Wi-Fi ให้กดค้าง 3 วินาที)");
+    while (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+      if (millis() - pressStart >= 3000) {
+        Serial.println("⚠️ [BOOT BUTTON] ครบ 3 วินาที! เริ่มกระบวนการล้างค่า Wi-Fi...");
+        resetWiFiSettings();
+      }
+      delay(50);
+    }
+  }
+}
 
 // ================= DIAGNOSTIC HELPERS =================
 inline String getWiFiStatusString(uint8_t status) {
@@ -93,6 +120,7 @@ inline float getJsonFloatValue(String json, String key) {
   if (endIndex == -1) return -1.0;
   
   String valStr = json.substring(valueStartIndex, endIndex);
+  valStr.replace("\"", "");
   valStr.trim();
   
   Serial.print("🔍 [JSON PARSE] Key: ");
@@ -106,31 +134,49 @@ inline float getJsonFloatValue(String json, String key) {
 }
 
 inline void connectWiFi() {
-  Serial.println();
-  Serial.print("📶 [WIFI] Connecting to WiFi: ");
-  Serial.println(ssid);
+  Serial.println("\n📶 [WIFI] กำลังตรวจสอบและเชื่อมต่อ Wi-Fi ด้วย WiFiManager...");
   
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, IPAddress(8, 8, 8, 8), IPAddress(1, 1, 1, 1));
-  WiFi.begin(ssid, password);
-  
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    setRGBColor(0, 0, 100);
-    delay(250);
-    setRGBColor(0, 0, 0);
-    delay(250);
-    Serial.print(".");
-    attempts++;
-  }
-  
-  Serial.println();
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("✅ [WIFI] WiFi Connected Successfully!");
-    Serial.print("👉 [WIFI] IP Address: ");
+  // ตั้งค่า timeout ของหน้า Portal เป็น 180 วินาที (3 นาที)
+  // หากไม่มีผู้ใช้เข้ามาเชื่อมต่อเพื่อตั้งค่าภายใน 3 นาที ให้บอร์ดข้ามไปทำงานส่วนอื่นต่อได้
+  wm.setConfigPortalTimeout(180);
+
+  // เพิ่มช่องกรอก Device ID ในหน้า Captive Portal เผื่อต้องการเปลี่ยนรหัสประจำเครื่อง
+  WiFiManagerParameter custom_device_id("device_id", "Device ID (เช่น LD6002C_TEST_01)", device_id, 32);
+  wm.addParameter(&custom_device_id);
+
+  // ตั้ง Callback แจ้งเตือนเมื่อบอร์ดเข้าสู่โหมด Access Point เพื่อรอการตั้งค่า
+  wm.setAPCallback([](WiFiManager *myWiFiManager) {
+    Serial.println("\n========================================================");
+    Serial.println("📡 [WIFI PORTAL] บอร์ดกำลังเปิด Hotspot สำหรับตั้งค่า Wi-Fi");
+    Serial.print("👉 ชื่อ Wi-Fi (SSID) : ");
+    Serial.println(myWiFiManager->getConfigPortalSSID());
+    Serial.println("👉 รหัสผ่าน Wi-Fi    : 12345678");
+    Serial.print("👉 ไอพีสำหรับตั้งค่า : http://");
+    Serial.println(WiFi.softAPIP());
+    Serial.println("========================================================\n");
+    setRGBColor(180, 0, 220); // แสดงไฟสีม่วง (Purple) สำหรับโหมดตั้งค่า Wi-Fi Portal ไม่ซ้ำกับสถานะมีคนใช้งาน (สีฟ้าคราม)
+  });
+
+  // สร้างชื่อ Hotspot ของบอร์ด เช่น ESP32S3-LD6002C_TEST_01
+  String apName = "ESP32S3-" + String(device_id);
+
+  // สั่งเชื่อมต่อ Wi-Fi ที่บันทึกไว้ใน NVS ถ้าไม่มีจะเปิด AP ชื่อ apName รหัส 12345678
+  bool isConnected = wm.autoConnect(apName.c_str(), "12345678");
+
+  if (isConnected) {
+    Serial.println("\n✅ [WIFI] WiFi Connected Successfully!");
+    Serial.print("👉 [WIFI] Connected SSID : ");
+    Serial.println(WiFi.SSID());
+    Serial.print("👉 [WIFI] IP Address     : ");
     Serial.println(WiFi.localIP());
+
+    // หากมีการแก้ไข Device ID ผ่านหน้า Portal ให้บันทึกลง Flash
+    if (strlen(custom_device_id.getValue()) > 0 && strcmp(device_id, custom_device_id.getValue()) != 0) {
+      Serial.printf("💾 [CONFIG] บันทึก Device ID ใหม่: %s\n", custom_device_id.getValue());
+      saveDeviceIDToNVS(custom_device_id.getValue());
+    }
   } else {
-    Serial.print("❌ [WIFI] Connection Failed! Reason: ");
-    Serial.println(getWiFiStatusString(WiFi.status()));
+    Serial.println("\n⚠️ [WIFI] Config Portal Timeout หรือเชื่อมต่อไม่สำเร็จ กำลังรันต่อแบบ Offline...");
   }
 }
 
@@ -151,6 +197,15 @@ inline void connectMQTTNonBlocking() {
     
     if (mqttClient.connect(clientId.c_str(), NULL, NULL, willTopic.c_str(), 0, false, willPayload.c_str())) {
       Serial.println("✅ CONNECTED!");
+
+      // Subscribe รับการตั้งค่าจากหน้าเว็บแบบ Realtime
+      String configTopic = "device/" + String(device_id) + "/config";
+      if (mqttClient.subscribe(configTopic.c_str())) {
+        Serial.printf("📡 [MQTT] Subscribed to [%s] for realtime config!\n", configTopic.c_str());
+      } else {
+        Serial.printf("❌ [MQTT] Failed to subscribe to [%s]\n", configTopic.c_str());
+      }
+
       sendEvent("status", "online", "ออนไลน์");
       setRGBColor(0, 150, 0);
     } else {
@@ -221,6 +276,88 @@ inline void sendEvent(const char* type, const char* name, const char* display_st
   Serial.println("---------------------------------------------\n");
 }
 
+// ================= DEVICE CONFIGURATION & REALTIME MQTT SYNC =================
+inline bool applyDeviceSettings(const String& payload, const char* source = "CONFIG") {
+  Serial.printf("\n⚙️ [%s] Applying updated parameters...\n", source);
+  Serial.print("📥 [PAYLOAD]: ");
+  Serial.println(payload);
+
+  float temp_threshold = getJsonFloatValue(payload, "fall_threshold");
+  float temp_height    = getJsonFloatValue(payload, "mount_height");
+  float temp_width     = getJsonFloatValue(payload, "room_width");
+  float temp_length    = getJsonFloatValue(payload, "room_length");
+  float temp_stay_timeout = getJsonFloatValue(payload, "stay_timeout_minutes");
+
+  bool updated = false;
+
+  if (temp_threshold >= 0) {
+    fall_threshold = temp_threshold;
+#if USE_LD6002C
+    sendConfigToRadar(0x0E08, fall_threshold);
+    delay(50);
+#endif
+    updated = true;
+  }
+  if (temp_height >= 0) {
+    mount_height = temp_height;
+#if USE_LD6002C
+    sendConfigToRadar(0x0E04, mount_height);
+    delay(50);
+#endif
+    updated = true;
+  }
+  bool sizeChanged = false;
+  if (temp_width >= 0) {
+    room_width = temp_width;
+    sizeChanged = true;
+    updated = true;
+  }
+  if (temp_length >= 0) {
+    room_length = temp_length;
+    sizeChanged = true;
+    updated = true;
+  }
+
+#if USE_LD6002C
+  if (sizeChanged) {
+    sendRoomSizeToRadar(room_width, room_length);
+    delay(100);
+  }
+#endif
+
+  if (temp_stay_timeout > 0) {
+    stay_timeout_minutes = temp_stay_timeout;
+    prolonged_stay_timeout = (unsigned long)(stay_timeout_minutes * 60.0 * 1000.0);
+    Serial.print("⏱️ [CONFIG] Updated stay_timeout_minutes: ");
+    Serial.print(stay_timeout_minutes);
+    Serial.println(" min");
+    updated = true;
+  }
+
+  if (updated) {
+    saveConfigToNVS(fall_threshold, mount_height, room_width, room_length, stay_timeout_minutes);
+    Serial.printf("✅ [%s] Settings applied & saved to Flash successfully!\n\n", source);
+  }
+  return updated;
+}
+
+inline void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  String message = "";
+  message.reserve(length);
+  for (unsigned int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+
+  Serial.println("\n---------------------------------------------");
+  Serial.printf("📩 [MQTT RX] Topic: %s\n", topic);
+
+  String configTopic = "device/" + String(device_id) + "/config";
+  if (String(topic) == configTopic) {
+    applyDeviceSettings(message, "MQTT REALTIME");
+  }
+  Serial.println("---------------------------------------------\n");
+}
+
 inline bool fetchDeviceSettings() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("⚠️ [CONFIG] WiFi disconnected. Cannot fetch settings.");
@@ -243,54 +380,7 @@ inline bool fetchDeviceSettings() {
   
   if (httpResponseCode == 200) {
     String payload = http.getString();
-    Serial.print("📥 [CONFIG] Server payload: ");
-    Serial.println(payload);
-    
-    float temp_threshold = getJsonFloatValue(payload, "fall_threshold");
-    float temp_height    = getJsonFloatValue(payload, "mount_height");
-    float temp_width     = getJsonFloatValue(payload, "room_width");
-    float temp_length    = getJsonFloatValue(payload, "room_length");
-    
-    if (temp_threshold >= 0) {
-      fall_threshold = temp_threshold;
-#if USE_LD6002C
-      sendConfigToRadar(0x0E08, fall_threshold);
-      delay(50);
-#endif
-    }
-    if (temp_height >= 0) {
-      mount_height = temp_height;
-#if USE_LD6002C
-      sendConfigToRadar(0x0E04, mount_height);
-      delay(50);
-#endif
-    }
-    bool sizeChanged = false;
-    if (temp_width >= 0) {
-      room_width = temp_width;
-      sizeChanged = true;
-    }
-    if (temp_length >= 0) {
-      room_length = temp_length;
-      sizeChanged = true;
-    }
-    float temp_stay_timeout = getJsonFloatValue(payload, "stay_timeout_minutes");
-    if (temp_stay_timeout > 0) {
-      stay_timeout_minutes = temp_stay_timeout;
-      prolonged_stay_timeout = (unsigned long)(stay_timeout_minutes * 60.0 * 1000.0);
-      Serial.print("⏱️ [CONFIG] Updated stay_timeout_minutes: ");
-      Serial.print(stay_timeout_minutes);
-      Serial.println(" min");
-    }
-
-#if USE_LD6002C
-    if (sizeChanged) {
-      sendRoomSizeToRadar(room_width, room_length);
-      delay(100);
-    }
-#endif
-    
-    saveConfigToNVS(fall_threshold, mount_height, room_width, room_length, stay_timeout_minutes);
+    applyDeviceSettings(payload, "HTTP BOOT");
     http.end();
     return true;
   } else {
@@ -313,6 +403,8 @@ inline void setupNetwork() {
 
   if (USE_MQTT) {
     mqttClient.setServer(mqtt_broker, mqtt_port);
+    mqttClient.setBufferSize(512);
+    mqttClient.setCallback(mqttCallback);
   }
 }
 
@@ -329,7 +421,7 @@ inline void handleNetwork() {
       last_wifi_retry = millis();
       Serial.println("📶 [WIFI] Reconnecting in background (Non-blocking)...");
       WiFi.disconnect();
-      WiFi.begin(ssid, password);
+      WiFi.reconnect();
     }
   } else {
     if (!wasConnected) {

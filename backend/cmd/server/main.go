@@ -115,6 +115,9 @@ func main() {
 		mqttBrokerURI = "tcp://localhost:1883"
 	}
 	mqttClient := mqtt.SetupMQTT(mqttBrokerURI, devService)
+	devService.SetConfigPublisher(func(deviceID string, settings iot.DeviceSetting) error {
+		return mqtt.PublishDeviceConfig(mqttClient, deviceID, settings)
+	})
 
 	defer mqttClient.Disconnect(250)
 

@@ -33,7 +33,7 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	if err := h.service.Register(input.GroupID, input.DeviceID, input.Name); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "ลงทะเบียนอุปกรณ์ไม่สำเร็จ"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	if err := h.service.Update(originalID, input); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "อัปเดตข้อมูลอุปกรณ์ไม่สำเร็จ"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "แก้ไขข้อมูลเซนเซอร์เรียบร้อยแล้ว"})
@@ -123,6 +123,31 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	var input iot.DeviceSetting
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ข้อมูลการตั้งค่าไม่ถูกต้อง"})
+		return
+	}
+
+	if input.DeviceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "กรุณาระบุรหัสอุปกรณ์ (device_id)"})
+		return
+	}
+	if input.StayTimeoutMinutes < 1.0 || input.StayTimeoutMinutes > 60.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ระยะเวลาแจ้งเตือนอยู่นานเกินกำหนดต้องอยู่ระหว่าง 1.0 ถึง 60.0 นาที"})
+		return
+	}
+	if input.FallThreshold < 0.2 || input.FallThreshold > 0.8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "เกณฑ์ตรวจจับการล้มตามสเปกเรดาร์ต้องอยู่ระหว่าง 0.20 ถึง 0.80 เมตร"})
+		return
+	}
+	if input.MountHeight < 2.0 || input.MountHeight > 3.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ความสูงติดตั้งตามสเปกเซนเซอร์ HLK-LD6002C ต้องอยู่ระหว่าง 2.0 ถึง 3.0 เมตร"})
+		return
+	}
+	if input.RoomWidth < 0.8 || input.RoomWidth > 4.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ความกว้างห้องต้องอยู่ระหว่าง 0.8 ถึง 4.0 เมตร (อิงรัศมีตรวจจับเรดาร์สูงสุด 2.0 เมตร)"})
+		return
+	}
+	if input.RoomLength < 0.8 || input.RoomLength > 4.0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ความยาวห้องต้องอยู่ระหว่าง 0.8 ถึง 4.0 เมตร (อิงรัศมีตรวจจับเรดาร์สูงสุด 2.0 เมตร)"})
 		return
 	}
 
@@ -137,8 +162,15 @@ func (h *Handler) GetSettings(c *gin.Context) {
 	deviceID := c.Param("device_id")
 	settings, err := h.service.GetSettings(deviceID)
 	if err != nil {
-		// ถ้ายังไม่มีการตั้งค่า ให้คืนค่า Default ไปก่อนนะค๊ะ
-		c.JSON(http.StatusOK, iot.DeviceSetting{DeviceID: deviceID})
+		// ถ้ายังไม่มีการตั้งค่า ให้คืนค่า Default แนะนำตามสเปกเซนเซอร์ (2.2m, 2.0m, 2.0m)
+		c.JSON(http.StatusOK, iot.DeviceSetting{
+			DeviceID:           deviceID,
+			MountHeight:        2.2,
+			RoomWidth:          2.0,
+			RoomLength:         2.0,
+			StayTimeoutMinutes: 30.0,
+			FallThreshold:      0.5,
+		})
 		return
 	}
 	c.JSON(http.StatusOK, settings)
@@ -172,16 +204,20 @@ func (h *Handler) GetEvents(c *gin.Context) {
 
 	limit := 50
 	if l := c.Query("limit"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
+		if l == "all" || l == "-1" {
+			limit = -1
+		} else if val, err := strconv.Atoi(l); err == nil && val > 0 {
 			limit = val
 		}
 	}
 	filter.Limit = limit
 
 	offset := 0
-	if p := c.Query("page"); p != "" {
-		if page, err := strconv.Atoi(p); err == nil && page > 1 {
-			offset = (page - 1) * limit
+	if limit > 0 {
+		if p := c.Query("page"); p != "" {
+			if page, err := strconv.Atoi(p); err == nil && page > 1 {
+				offset = (page - 1) * limit
+			}
 		}
 	}
 	filter.Offset = offset

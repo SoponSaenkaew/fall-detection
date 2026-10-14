@@ -9,21 +9,32 @@ import (
 	"gorm.io/gorm"
 )
 
+type ConfigPublisherFunc func(deviceID string, settings iot.DeviceSetting) error
+
 type Service struct {
-	db *gorm.DB
+	db              *gorm.DB
+	configPublisher ConfigPublisherFunc
 }
 
 func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
+func (s *Service) SetConfigPublisher(fn ConfigPublisherFunc) {
+	s.configPublisher = fn
+}
+
 func (s *Service) Register(groupID uint, deviceID, name string) error {
-	// 1. ตรวจสอบว่าเคยมี Device ID นี้ในฐานข้อมูลหรือไม่ (รวมถึงที่ถูก Soft Delete ไว้)
-	var existing iot.Device
-	err := s.db.Unscoped().Where("device_id = ?", deviceID).First(&existing).Error
-	if err == nil {
-		// หากเคยมีอยู่แล้ว ให้ Restore แถวเดิมกลับมา ผูกกับกลุ่มใหม่ โดยที่ประวัติ Event เดิมยังคงอยู่ครบถ้วน
-		return s.db.Unscoped().Model(&existing).Updates(map[string]interface{}{
+	// 1. ตรวจสอบว่ามีอุปกรณ์ที่ยังใช้งานอยู่ (ไม่ได้ถูกลบ) ใช้ Device ID นี้อยู่แล้วหรือไม่
+	var activeDev iot.Device
+	if err := s.db.Where("device_id = ?", deviceID).First(&activeDev).Error; err == nil {
+		return fmt.Errorf("รหัสอุปกรณ์ '%s' มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น", deviceID)
+	}
+
+	// 2. ถ้าเคยมี Device ID นี้แต่ถูกลบ (Soft Delete) ไปแล้ว สามารถกู้คืน (Restore) กลับมาใช้งานใหม่ได้
+	var deletedDev iot.Device
+	if err := s.db.Unscoped().Where("device_id = ? AND deleted_at IS NOT NULL", deviceID).First(&deletedDev).Error; err == nil {
+		return s.db.Unscoped().Model(&deletedDev).Updates(map[string]interface{}{
 			"deleted_at": nil,
 			"group_id":   groupID,
 			"name":       name,
@@ -31,7 +42,7 @@ func (s *Service) Register(groupID uint, deviceID, name string) error {
 		}).Error
 	}
 
-	// 2. ถ้าเป็น Device ID ใหม่ ให้สร้างแถวใหม่ตามปกติ
+	// 3. ถ้าเป็น Device ID ใหม่ ให้สร้างแถวใหม่ตามปกติ
 	return s.db.Create(&iot.Device{
 		DeviceID: deviceID,
 		Name:     name,
@@ -105,7 +116,7 @@ func (s *Service) ProcessEvent(devID, evType, name, val, meta string) error {
 				// ส่งผ่าน LINE Messaging API
 				go notifier.SendLineNotification(cfg.Type, cfg.LineToken, cfg.LineGroupID, msg)
 			case "webhook":
-				// ส่งผ่าน Webhook ทั่วไป (เช่น Discord)
+				// ส่งผ่าน Webhook ทั่วไป
 				go notifier.SendSimpleNotification("webhook", cfg.TargetURL, msg)
 			}
 		}
@@ -160,6 +171,13 @@ func (s *Service) Delete(deviceID string) error {
 
 // backend/internal/iot/device/service.go
 func (s *Service) Update(originalID string, newData iot.Device) error {
+	// ตรวจสอบว่าถ้ามีการเปลี่ยนรหัสอุปกรณ์ รหัสใหม่จะต้องไม่ซ้ำกับอุปกรณ์อื่นที่ใช้งานอยู่
+	if newData.DeviceID != originalID {
+		var activeDev iot.Device
+		if err := s.db.Where("device_id = ? AND device_id <> ?", newData.DeviceID, originalID).First(&activeDev).Error; err == nil {
+			return fmt.Errorf("รหัสอุปกรณ์ '%s' มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น", newData.DeviceID)
+		}
+	}
 	return s.db.Model(&iot.Device{}).
 		Where("device_id = ?", originalID).
 		Updates(map[string]interface{}{
@@ -170,9 +188,23 @@ func (s *Service) Update(originalID string, newData iot.Device) error {
 
 func (s *Service) UpdateSettings(settings iot.DeviceSetting) error {
 	// ใช้ Save เพื่อทำ Upsert (ถ้ามี ID เดิมจะอัปเดต ถ้าไม่มีจะสร้างใหม่ค่ะ)
-	return s.db.Where("device_id = ?", settings.DeviceID).
+	err := s.db.Where("device_id = ?", settings.DeviceID).
 		Assign(settings).
 		FirstOrCreate(&iot.DeviceSetting{DeviceID: settings.DeviceID}).Error
+	if err != nil {
+		return err
+	}
+
+	// บรอดแคสต์การตั้งค่าใหม่ไปยังอุปกรณ์ผ่าน MQTT แบบเรียลไทม์ทันที
+	if s.configPublisher != nil {
+		go func() {
+			if pubErr := s.configPublisher(settings.DeviceID, settings); pubErr != nil {
+				fmt.Printf("⚠️ [CONFIG PUBLISH] ไม่สามารถส่งค่าไปยัง MQTT ได้: %v\n", pubErr)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (s *Service) GetSettings(deviceID string) (iot.DeviceSetting, error) {
@@ -266,15 +298,17 @@ func (s *Service) GetEvents(filter EventFilter) ([]EventItem, int64, error) {
 		return nil, 0, err
 	}
 
-	if filter.Limit <= 0 {
+	if filter.Limit == 0 {
 		filter.Limit = 50
 	}
 
 	var events []EventItem
-	err := query.Order("device_events.created_at DESC").
-		Limit(filter.Limit).
-		Offset(filter.Offset).
-		Scan(&events).Error
+	query = query.Order("device_events.created_at DESC")
+	if filter.Limit > 0 {
+		query = query.Limit(filter.Limit).Offset(filter.Offset)
+	}
+
+	err := query.Scan(&events).Error
 
 	return events, total, err
 }
@@ -295,44 +329,56 @@ func (s *Service) ResolveEvent(eventID uint, status, resolvedBy, note string) er
 func (s *Service) GetEventStats(userID uint, groupID uint) (EventStats, error) {
 	var stats EventStats
 
-	// นับเหตุการณ์ล้ม
-	fallQuery := s.db.Model(&iot.DeviceEvent{}).Where("name = ?", "fall")
+	baseEventQuery := s.db.Model(&iot.DeviceEvent{}).
+		Joins("LEFT JOIN devices ON devices.id = device_events.device_id")
+
 	if groupID > 0 {
-		fallQuery = fallQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
-			Where("devices.group_id = ?", groupID)
+		baseEventQuery = baseEventQuery.Where("devices.group_id = ?", groupID)
+	} else if userID > 0 {
+		baseEventQuery = baseEventQuery.
+			Joins("LEFT JOIN groups ON groups.id = devices.group_id").
+			Where("(groups.user_id = ? OR groups.user_id IS NULL OR groups.user_id = 0)", userID)
 	}
-	fallQuery.Count(&stats.TotalFalls)
+
+	// นับเหตุการณ์ล้ม
+	if err := baseEventQuery.Session(&gorm.Session{}).
+		Where("device_events.name = ?", "fall").
+		Count(&stats.TotalFalls).Error; err != nil {
+		return stats, err
+	}
 
 	// นับเหตุการณ์ล้มที่รอการช่วยเหลือ
-	pendingQuery := s.db.Model(&iot.DeviceEvent{}).
-		Where("name = ? AND status = ?", "fall", "pending")
-	if groupID > 0 {
-		pendingQuery = pendingQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
-			Where("devices.group_id = ?", groupID)
+	if err := baseEventQuery.Session(&gorm.Session{}).
+		Where("device_events.name = ? AND device_events.status = ?", "fall", "pending").
+		Count(&stats.PendingFalls).Error; err != nil {
+		return stats, err
 	}
-	pendingQuery.Count(&stats.PendingFalls)
 
 	// นับเหตุการณ์ล้มที่ช่วยเหลือแล้ว
-	resolvedQuery := s.db.Model(&iot.DeviceEvent{}).
-		Where("name = ? AND status = ?", "fall", "resolved")
-	if groupID > 0 {
-		resolvedQuery = resolvedQuery.Joins("JOIN devices ON devices.id = device_events.device_id").
-			Where("devices.group_id = ?", groupID)
+	if err := baseEventQuery.Session(&gorm.Session{}).
+		Where("device_events.name = ? AND device_events.status = ?", "fall", "resolved").
+		Count(&stats.ResolvedFalls).Error; err != nil {
+		return stats, err
 	}
-	resolvedQuery.Count(&stats.ResolvedFalls)
 
 	// อุปกรณ์ออนไลน์ / ทั้งหมด
 	devQuery := s.db.Model(&iot.Device{})
 	if groupID > 0 {
-		devQuery = devQuery.Where("group_id = ?", groupID)
+		devQuery = devQuery.Where("devices.group_id = ?", groupID)
+	} else if userID > 0 {
+		devQuery = devQuery.Joins("LEFT JOIN groups ON groups.id = devices.group_id").
+			Where("(groups.user_id = ? OR groups.user_id IS NULL OR groups.user_id = 0)", userID)
 	}
-	devQuery.Count(&stats.TotalDevices)
 
-	devOnlineQuery := s.db.Model(&iot.Device{}).Where("status = ?", "online")
-	if groupID > 0 {
-		devOnlineQuery = devOnlineQuery.Where("group_id = ?", groupID)
+	if err := devQuery.Session(&gorm.Session{}).Count(&stats.TotalDevices).Error; err != nil {
+		return stats, err
 	}
-	devOnlineQuery.Count(&stats.OnlineDevices)
+
+	if err := devQuery.Session(&gorm.Session{}).
+		Where("devices.status = ?", "online").
+		Count(&stats.OnlineDevices).Error; err != nil {
+		return stats, err
+	}
 
 	return stats, nil
 }

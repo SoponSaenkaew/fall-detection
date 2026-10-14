@@ -13,7 +13,7 @@ import {
   EditDeviceModal,
   DeviceSettingsModal 
 } from '@/components/Dashboard/Modals';
-import { Layout, Plus, Trash2, BellRing, Pencil, X } from 'lucide-react';
+import { Layout, Plus, Trash2, BellRing, Pencil, X, Radio } from 'lucide-react';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -138,29 +138,78 @@ export default function Dashboard() {
     return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // คำนวณสถิติภาพรวมสำหรับดูสถานะคร่าวๆ
+  const totalDevices = groups.reduce((acc, g) => acc + (g.devices?.length || 0), 0);
+  const onlineDevices = groups.reduce((acc, g) => acc + (g.devices?.filter((d: any) => d.status === 'online').length || 0), 0);
+  const offlineDevices = totalDevices - onlineDevices;
+  const allExistingDeviceIds = groups.flatMap((g) => (g.devices || []).map((d: any) => d.device_id));
+
   return (
-    <div className="p-4 sm:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-8 bg-slate-50 min-h-screen">
       {/* 1. Header ส่วนหัวของ Dashboard */}
       <Header onAddGroup={() => setShowAddModal(true)} />
 
-      {/* แถบแจ้งเตือนฉุกเฉิน */}
+      {/* แถบแจ้งเตือนสั้นๆ หากมีเหตุการณ์ */}
       {alertMsg && (
-        <div className="mt-4 sm:mt-6 mb-4 p-4 bg-red-500 text-white rounded-2xl shadow-lg border-2 border-red-600 flex justify-between items-center animate-pulse">
-          <div className="flex items-center">
-            <BellRing className="mr-3 flex-shrink-0" size={24} />
-            <span className="font-bold text-base sm:text-lg">🚨 ฉุกเฉิน: {alertMsg}</span>
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl shadow-xs flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 bg-amber-100 text-amber-700 rounded-xl font-bold">⚠️</span>
+            <span className="font-semibold text-xs sm:text-sm">{alertMsg}</span>
           </div>
           <button 
             onClick={() => setAlertMsg("")} 
-            className="p-1.5 hover:bg-red-600 active:bg-red-700 rounded-xl transition flex-shrink-0"
+            className="p-1 hover:bg-amber-100 rounded-lg transition text-amber-700"
             title="ปิดการแจ้งเตือน"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
       )}
 
-      {/* 2. ส่วนของ Modals ทั้งหมด */}
+      {/* 2. สรุปภาพรวมสำหรับดูสถานะคร่าวๆ (Quick Glance Overview) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 text-left">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <Layout size={20} />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400">สถานที่ / อาคาร</p>
+            <p className="text-xl font-bold text-slate-800">{groups.length} <span className="text-xs font-normal text-slate-400">แห่ง</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 text-left">
+          <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+            <Radio size={20} />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400">เซนเซอร์ทั้งหมด</p>
+            <p className="text-xl font-bold text-slate-800">{totalDevices} <span className="text-xs font-normal text-slate-400">ตัว</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 text-left">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400">ออนไลน์ (Online)</p>
+            <p className="text-xl font-bold text-emerald-600">{onlineDevices} <span className="text-xs font-normal text-slate-400">ตัว</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 text-left">
+          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0">
+            <span className="w-3 h-3 rounded-full bg-slate-400"></span>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400">ออฟไลน์ (Offline)</p>
+            <p className="text-xl font-bold text-slate-500">{offlineDevices} <span className="text-xs font-normal text-slate-400">ตัว</span></p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. ส่วนของ Modals ทั้งหมด */}
       <AddGroupModal 
         isOpen={showAddModal} 
         onClose={() => setShowAddModal(false)} 
@@ -183,6 +232,7 @@ export default function Dashboard() {
         onSubmit={handleAddDevice} 
         newDev={newDev} 
         setNewDev={setNewDev} 
+        existingDeviceIds={allExistingDeviceIds}
       />
 
       <EditDeviceModal 
@@ -191,6 +241,8 @@ export default function Dashboard() {
         onSubmit={handleUpdateDevice} 
         devData={editDevData} 
         setDevData={setEditDevData} 
+        originalId={showEditDev.originalId}
+        existingDeviceIds={allExistingDeviceIds}
       />
 
       <DeviceSettingsModal 
@@ -209,86 +261,128 @@ export default function Dashboard() {
         setForm={setNotifForm} 
       />
 
-      {/* 3. ส่วนแสดงผลกลุ่มและอุปกรณ์ (Main Content) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mt-4 sm:mt-6">
-        {groups.map((group) => (
-          <div key={group.ID} className="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-200 flex flex-col justify-between">
-            <div>
-              {/* แถบหัวข้อกลุ่มพร้อมปุ่มจัดการที่มองเห็นและกดง่ายบนมือถือ */}
-              <div className="flex items-center justify-between mb-4 border-b pb-3 text-left gap-2">
-                <div className="flex items-center text-blue-600 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-2.5 flex-shrink-0">
-                    <Layout size={18} />
+      {/* 4. ส่วนแสดงผลกลุ่มและอุปกรณ์ แยกตามสถานที่ (Group Sections) */}
+      <div className="space-y-6 text-left">
+        {groups.map((group) => {
+          const groupDevices = group.devices || [];
+          const groupOnlineCount = groupDevices.filter((d: any) => d.status === 'online').length;
+
+          return (
+            <div key={group.ID} className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 transition">
+              {/* แถบหัวข้อสถานที่และปุ่มควบคุม */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Layout size={20} />
                   </div>
-                  <h2 className="text-base sm:text-lg font-bold text-gray-800 truncate" title={group.name}>{group.name}</h2>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-slate-800">{group.name}</h2>
+                      <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg">
+                        {groupDevices.length} อุปกรณ์ (ออนไลน์ {groupOnlineCount})
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">จัดการเซนเซอร์เรดาร์และการแจ้งเตือนประจำอาคารนี้</p>
+                  </div>
                 </div>
 
-                {/* ปุ่มจัดการกลุ่ม (มองเห็นชัดเจนทั้งบนมือถือและจอคอม) */}
-                <div className="flex items-center gap-1 flex-shrink-0 bg-gray-50/80 p-1 rounded-xl border border-gray-200/70">
+                {/* ปุ่มจัดการประจำสถานที่ (LINE Alert, Edit, Delete, Add Device) */}
+                <div className="flex flex-wrap items-center gap-2">
                   <button 
+                    type="button"
+                    onClick={() => setShowNotifModal({show: true, groupId: group.ID})} 
+                    className="px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition flex items-center gap-1.5"
+                    title="ตั้งค่าแจ้งเตือนผ่าน LINE"
+                  >
+                    <BellRing size={14} />
+                    <span>แจ้งเตือน LINE</span>
+                  </button>
+
+                  <button 
+                    type="button"
                     onClick={() => {
                       setEditGroupName(group.name);
                       setShowEditGroup({show: true, id: group.ID});
                     }} 
-                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition"
+                    className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 rounded-xl transition"
                     title="แก้ไขชื่อสถานที่"
-                    aria-label="แก้ไขสถานที่"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={14} />
                   </button>
+
                   <button 
-                    onClick={() => setShowNotifModal({show: true, groupId: group.ID})} 
-                    className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 active:bg-amber-100 rounded-lg transition"
-                    title="ตั้งค่าแจ้งเตือน LINE/Webhook"
-                    aria-label="ตั้งค่าแจ้งเตือน"
-                  >
-                    <BellRing size={15} />
-                  </button>
-                  <button 
+                    type="button"
                     onClick={() => handleDeleteGroup(group.ID)} 
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-lg transition"
-                    title="ลบกลุ่มนี้"
-                    aria-label="ลบกลุ่ม"
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 rounded-xl transition"
+                    title="ลบสถานที่นี้"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} 
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-xs flex items-center gap-1 ml-1"
+                  >
+                    <Plus size={14} />
+                    <span>เพิ่มเซนเซอร์</span>
                   </button>
                 </div>
               </div>
-              
-              {/* รายการอุปกรณ์ภายใต้กลุ่ม */}
-              <div className="space-y-3 mb-4">
-                {group.devices && group.devices.length > 0 ? (
-                  group.devices.map((dev: any) => (
-                    <DeviceCard 
-                      key={dev.ID}
-                      dev={dev} 
-                      formatTime={formatTime} 
-                      onDelete={handleDeleteDevice}
-                      onOpenSettings={handleOpenSettings}
-                      onEdit={(d: any) => {
-                        setEditDevData({ device_id: d.device_id, name: d.name });
-                        setShowEditDev({ show: true, originalId: d.device_id });
-                      }}
-                    />
-                  ))
+
+              {/* รายการการ์ดอุปกรณ์ในสถานที่นี้ */}
+              <div className="mt-4">
+                {groupDevices.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupDevices.map((dev: any) => (
+                      <DeviceCard 
+                        key={dev.ID}
+                        dev={dev} 
+                        formatTime={formatTime} 
+                        onDelete={handleDeleteDevice}
+                        onOpenSettings={handleOpenSettings}
+                        onEdit={(d: any) => {
+                          setEditDevData({ device_id: d.device_id, name: d.name });
+                          setShowEditDev({ show: true, originalId: d.device_id });
+                        }}
+                      />
+                    ))}
+                  </div>
                 ) : (
-                  <div className="py-8 text-center text-gray-400 text-xs bg-slate-50 rounded-xl border border-dashed border-gray-200">
-                    ยังไม่มีอุปกรณ์ในกลุ่มนี้
+                  <div className="py-10 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center">
+                    <Radio size={28} className="text-slate-300 mb-2" />
+                    <p className="text-xs font-medium">ยังไม่มีเซนเซอร์เรดาร์ในสถานที่นี้</p>
+                    <button 
+                      type="button"
+                      onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} 
+                      className="mt-3 px-3.5 py-1.5 text-xs font-bold text-blue-600 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition"
+                    >
+                      + ลงทะเบียนเซนเซอร์ตัวแรก
+                    </button>
                   </div>
                 )}
               </div>
             </div>
+          );
+        })}
 
-            {/* ปุ่มเพิ่มอุปกรณ์ใหม่ในกลุ่ม */}
+        {groups.length === 0 && (
+          <div className="py-16 text-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 flex flex-col items-center justify-center">
+            <Layout size={36} className="text-slate-300 mb-3" />
+            <h3 className="text-base font-bold text-slate-700">ยังไม่มีสถานที่หรืออาคารในระบบ</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm">
+              เริ่มต้นด้วยการเพิ่มสถานที่ เช่น &quot;บ้านพัก&quot;, &quot;อาคาร 1&quot; เพื่อจัดกลุ่มเซนเซอร์เรดาร์
+            </p>
             <button 
-              onClick={() => setShowAddDevModal({show: true, groupId: group.ID})} 
-              className="w-full py-2.5 px-3 border-2 border-dashed border-blue-200/80 rounded-xl text-blue-600 text-xs font-semibold hover:bg-blue-50 active:bg-blue-100 transition flex items-center justify-center gap-1.5 mt-2"
+              type="button"
+              onClick={() => setShowAddModal(true)} 
+              className="mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md flex items-center gap-1.5"
             >
-              <Plus size={16} /> 
-              <span>เพิ่มอุปกรณ์ใน {group.name}</span>
+              <Plus size={16} />
+              <span>สร้างสถานที่แรก</span>
             </button>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

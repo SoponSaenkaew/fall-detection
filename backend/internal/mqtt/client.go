@@ -63,3 +63,25 @@ func SetupMQTT(brokerURI string, devService *device.Service) mqtt.Client {
 	fmt.Println("📡 [MQTT] สแตนด์บายรอรับข้อมูลที่ Topic: sensor/events")
 	return client
 }
+
+// PublishDeviceConfig ส่งการตั้งค่าใหม่ไปยัง Topic ของอุปกรณ์นั้นๆ เพื่อให้อัปเดตแบบเรียลไทม์
+func PublishDeviceConfig(client mqtt.Client, deviceID string, settings interface{}) error {
+	if client == nil || !client.IsConnected() {
+		return fmt.Errorf("MQTT client is not connected")
+	}
+
+	payload, err := json.Marshal(settings)
+	if err != nil {
+		return err
+	}
+
+	topic := fmt.Sprintf("device/%s/config", deviceID)
+	token := client.Publish(topic, 0, false, payload)
+	token.Wait()
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("failed to publish config to MQTT: %w", err)
+	}
+
+	fmt.Printf("📢 [MQTT CONFIG] บรอดแคสต์การตั้งค่าใหม่ไปยัง [%s]: %s\n", topic, string(payload))
+	return nil
+}

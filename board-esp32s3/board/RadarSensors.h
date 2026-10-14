@@ -57,10 +57,20 @@ inline void sendConfigToRadar(uint16_t type, float value) {
 }
 
 inline void sendRoomSizeToRadar(float width, float length) {
-  float rect_XL = -width;        // ขอบเขตซ้าย
-  float rect_XR = width;         // ขอบเขตขวา
-  float rect_ZF = length;        // ขอบเขตหน้า
-  float rect_ZB = -length;       // ขอบเขตหลัง
+  // คำนวณระยะจากจุดศูนย์กลางไปยังผนังแต่ละด้าน (กึ่งกลางห้อง: กว้าง / 2 และ ยาว / 2)
+  float half_w = width / 2.0f;
+  float half_l = length / 2.0f;
+
+  // จำกัดระยะให้อยู่ในขอบเขตที่เรดาร์ HLK-LD6002C รองรับได้ (0.3m ถึง 1.5m ต่อด้าน)
+  if (half_w > 1.5f) half_w = 1.5f;
+  if (half_w < 0.3f) half_w = 0.3f;
+  if (half_l > 1.5f) half_l = 1.5f;
+  if (half_l < 0.3f) half_l = 0.3f;
+
+  float rect_XL = -half_w;        // ขอบเขตซ้าย
+  float rect_XR = half_w;         // ขอบเขตขวา
+  float rect_ZF = half_l;         // ขอบเขตหน้า
+  float rect_ZB = -half_l;        // ขอบเขตหลัง
   
   uint8_t frame[25];
   frame[0] = 0x01; // SOF
@@ -80,7 +90,8 @@ inline void sendRoomSizeToRadar(float width, float length) {
   
   RadarSerial.write(frame, 25);
   
-  Serial.printf("📡 [RADAR CONFIG] ส่งขอบเขตห้อง (0x0E0C) กว้าง +/-%.1fm, ยาว +/-%.1fm\n", width, length);
+  Serial.printf("📡 [RADAR CONFIG] ส่งขอบเขตห้อง (0x0E0C): ขนาดห้อง %.1fx%.1fm -> รัศมีกึ่งกลาง +/-%.2fm (กว้าง), +/-%.2fm (ยาว)\n", 
+                width, length, half_w, half_l);
 }
 
 inline void setupRadarLD6002C() {
@@ -140,6 +151,17 @@ inline void readRadar() {
       }
 
       got_valid_packet = true;
+
+      // จัดรูปแบบ Hex ของเฟรม LD6002C ทั้งชุด (Header + Payload + Checksum)
+      char hexBuf[256] = {0};
+      int hexOffset = 0;
+      for (int i = 0; i < 8 && hexOffset < (int)sizeof(hexBuf) - 5; i++) {
+        hexOffset += snprintf(hexBuf + hexOffset, sizeof(hexBuf) - hexOffset, "%02X ", header[i]);
+      }
+      for (int i = 0; i < dataLen && hexOffset < (int)sizeof(hexBuf) - 5; i++) {
+        hexOffset += snprintf(hexBuf + hexOffset, sizeof(hexBuf) - hexOffset, "%02X ", payload[i]);
+      }
+      hexOffset += snprintf(hexBuf + hexOffset, sizeof(hexBuf) - hexOffset, "%02X", rxDataCk);
 
       // ================= 2. วิเคราะห์ข้อมูล =================
       // ก. เฟรมตรวจจับการล้ม (Type 0x0E02)
@@ -213,18 +235,36 @@ inline void readRadar() {
         if (is_fall != last_printed_is_fall || now - last_radar_log_time >= 3000) {
           last_printed_is_fall = is_fall;
           last_radar_log_time = now;
-          Serial.print("📡 [RAW SENSOR] Direct output from radar -> is_fall: ");
-          Serial.println(is_fall == 0x01 ? "1 (🚨 FALL / ล้ม)" : "0 (🟢 NORMAL / ปกติ)");
+          Serial.println("\n------------------------------------------------------------");
+          Serial.printf("📡 [LD6002C] ข้อมูลเรดาร์ตรวจจับการล้ม (60GHz)\n");
+          Serial.printf("📦 Hex เต็ม  : [ %s ]\n", hexBuf);
+          Serial.printf("🔍 การตีความ : ประเภท = 0x%04X (ตรวจจับการล้ม) | ไบต์สถานะ = 0x%02X -> %s\n",
+                        msgType, is_fall,
+                        is_fall == 0x01 ? "🚨 1 (ตรวจพบคนล้ม / FALL)" : "🟢 0 (สภาวะปกติ / NORMAL)");
+          Serial.println("------------------------------------------------------------\n");
         }
       }
       // ข. เฟรมตอบรับคำสั่ง Config (ACK: 0x0E04, 0x0E08, 0x0E0C)
       else if (msgType == 0x0E04 || msgType == 0x0E08 || msgType == 0x0E0C) {
-        Serial.printf("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x%04X\n", msgType);
+        Serial.println("\n------------------------------------------------------------");
+        Serial.printf("📥 [LD6002C ACK] ตอบรับคำสั่ง Config: 0x%04X\n", msgType);
+        Serial.printf("📦 Hex เต็ม  : [ %s ]\n", hexBuf);
+        Serial.printf("🔍 การตีความ : ได้รับการยืนยันการตั้งค่าจากตัวเรดาร์สำเร็จ\n");
+        Serial.println("------------------------------------------------------------\n");
       }
       // ค. เฟรมความสูงเป้าหมาย (0x0E0E)
       else if (msgType == 0x0E0E && dataLen == 4) {
         float target_height;
         memcpy(&target_height, payload, 4);
+        static unsigned long last_height_log = 0;
+        if (millis() - last_height_log >= 3000) {
+          last_height_log = millis();
+          Serial.println("\n------------------------------------------------------------");
+          Serial.printf("📏 [LD6002C HEIGHT] ข้อมูลความสูงเป้าหมาย\n");
+          Serial.printf("📦 Hex เต็ม  : [ %s ]\n", hexBuf);
+          Serial.printf("🔍 การตีความ : ความสูงของเป้าหมายที่วัดได้ = %.2f เมตร\n", target_height);
+          Serial.println("------------------------------------------------------------\n");
+        }
       }
     }
   }
@@ -264,15 +304,29 @@ inline void setupRadarLD2410C() {
 inline void readLD2410() {
   static unsigned long last_presence_time  = 0;
   static unsigned long last_ld2410_log_time = 0;
+  static int last_presence_val = -1;
 
   int presence = digitalRead(LD2410_OUT_PIN);
   bool is_occupied = (presence == HIGH);
   unsigned long now = millis();
   
+  // แจ้งเตือนทันทีเมื่อสัญญาณเปลี่ยนค่า (0 -> 1 หรือ 1 -> 0)
+  if (presence != last_presence_val) {
+    last_presence_val = presence;
+    Serial.println("\n------------------------------------------------------------");
+    Serial.printf("🔄 [LD2410C] สัญญาณตรวจจับการเคลื่อนไหวเปลี่ยนแปลง!\n");
+    Serial.printf("📦 ค่าดิบ GPIO%d : %d\n", LD2410_OUT_PIN, presence);
+    Serial.printf("🔍 การตีความ     : %s\n",
+                  presence == 1 ? "1 = 👤 ตรวจพบคนในห้องน้ำ (OCCUPIED)" : "0 = 👻 ห้องว่าง ไม่มีคน (EMPTY)");
+    Serial.println("------------------------------------------------------------\n");
+  }
+
+  // แสดงผลค่าดิบ 1 หรือ 0 พร้อมการตีความต่อเนื่องทุกๆ 3 วินาที
   if (now - last_ld2410_log_time >= 3000) {
     last_ld2410_log_time = now;
-    Serial.print("📡 [LD2410 DEBUG] Human presence state: ");
-    Serial.println(is_occupied ? "OCCUPIED (มีคนอยู่)" : "EMPTY (ห้องว่าง)");
+    Serial.printf("📡 [LD2410C] ค่าดิบ GPIO%d: %d | การตีความ: %s\n",
+                  LD2410_OUT_PIN, presence,
+                  presence == 1 ? "1 = 👤 มีคนอยู่ (OCCUPIED)" : "0 = 👻 ห้องว่าง (EMPTY)");
   }
 
   if (is_occupied) {

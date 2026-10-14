@@ -8,3 +8,6 @@ Thumbs.db
 .vscode/
 .theia/
 *.mp4
+scratch/
+__pycache__/
+*.pyc

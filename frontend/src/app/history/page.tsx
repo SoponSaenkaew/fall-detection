@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '@/components/Dashboard/Header';
 import { eventService, groupService } from '@/services/api';
 import { 
   AlertTriangle, 
-  CheckCircle, 
   Clock, 
   Download, 
   RefreshCw, 
   Search, 
   X, 
   Filter,
-  CheckCircle2,
-  AlertCircle
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -42,20 +43,60 @@ export default function HistoryPage() {
   // Filters State
   const [filterType, setFilterType] = useState<string>("fall"); // เริ่มต้นที่การล้ม
   const [filterGroup, setFilterGroup] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
+
+  // Pagination State
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<string>("50"); // "50", "100", "250", "all"
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  const handleFilterTypeChange = (val: string) => {
+    setFilterType(val);
+    setPage(1);
+  };
+  const handleFilterGroupChange = (val: string) => {
+    setFilterGroup(val);
+    setPage(1);
+  };
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+  const handlePageSizeChange = (val: string) => {
+    setPageSize(val);
+    setPage(1);
+  };
+
+  const totalPages = pageSize === 'all' ? 1 : Math.ceil(total / Number(pageSize)) || 1;
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (page <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (page >= totalPages - 3) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(page - 1);
+        pages.push(page);
+        pages.push(page + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Alert State
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
-
-  // Modal จัดการช่วยเหลือ (Resolve Modal)
-  const [resolveModal, setResolveModal] = useState<{
-    show: boolean;
-    event: any | null;
-  }>({ show: false, event: null });
-  const [resolveNote, setResolveNote] = useState<string>("");
-  const [resolveAction, setResolveAction] = useState<string>("resolved"); // "resolved" หรือ "false_alarm"
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // ดึงข้อมูลกลุ่มสถานที่
   const fetchGroups = async () => {
@@ -71,10 +112,15 @@ export default function HistoryPage() {
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = { limit: 100 };
+      const params: any = {};
+      if (pageSize === 'all') {
+        params.limit = 'all';
+      } else {
+        params.limit = parseInt(pageSize, 10);
+        params.page = page;
+      }
       if (filterType !== 'all') params.name = filterType;
       if (filterGroup !== 'all') params.group_id = filterGroup;
-      if (filterStatus !== 'all') params.status = filterStatus;
       if (search.trim()) params.search = search.trim();
 
       const res = await eventService.getAll(params);
@@ -85,7 +131,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterGroup, filterStatus, search]);
+  }, [filterType, filterGroup, search, page, pageSize]);
 
   // ดึงสถิติภาพรวม
   const fetchStats = useCallback(async () => {
@@ -104,6 +150,19 @@ export default function HistoryPage() {
     fetchStats();
   }, [fetchEvents, fetchStats]);
 
+  const refreshAllRef = useRef(refreshAll);
+  refreshAllRef.current = refreshAll;
+
+  // ดึงรายการประวัติเมื่อตัวกรองเปลี่ยน
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  // ดึงตัวเลขสถิติเมื่อเปลี่ยนสถานที่
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
@@ -112,7 +171,6 @@ export default function HistoryPage() {
     }
 
     fetchGroups();
-    refreshAll();
 
     // เชื่อมต่อ WebSocket สำหรับการแจ้งเตือน Realtime
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -127,7 +185,7 @@ export default function HistoryPage() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          refreshAll();
+          refreshAllRef.current();
           if (data.name === 'fall') {
             setAlertMsg(`🚨 มีการตรวจพบเหตุล้มใหม่! รหัสอุปกรณ์: ${data.device_id || 'เซนเซอร์'}`);
           }
@@ -142,7 +200,7 @@ export default function HistoryPage() {
     return () => {
       if (ws) ws.close();
     };
-  }, [router, refreshAll]);
+  }, [router]);
 
   // ฟอร์แมตวันเวลาแบบไทย
   const formatDateTime = (isoStr: string) => {
@@ -158,28 +216,6 @@ export default function HistoryPage() {
     }) + ' น.';
   };
 
-  // จัดการบันทึกสถานะการช่วยเหลือ
-  const handleConfirmResolve = async () => {
-    if (!resolveModal.event) return;
-    try {
-      setIsSubmitting(true);
-      await eventService.resolve(resolveModal.event.id, {
-        status: resolveAction,
-        resolution_note: resolveNote || (resolveAction === 'resolved' ? "เข้าช่วยเหลือแล้ว ปลอดภัยดี" : "สัญญาณแจ้งเตือนผิดพลาด")
-      });
-
-      // ปิด modal และรีเฟรชข้อมูล
-      setResolveModal({ show: false, event: null });
-      setResolveNote("");
-      refreshAll();
-      setAlertMsg(null);
-    } catch (err: any) {
-      alert("บันทึกไม่สำเร็จ: " + (err.response?.data?.error || err.message));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // ฟังก์ชันแปลงชื่อเหตุการณ์เป็นภาษาไทย
   const getEventNameText = (name: string) => {
     switch (name) {
@@ -193,26 +229,41 @@ export default function HistoryPage() {
     }
   };
 
-  // ส่งออกข้อมูลเป็น CSV
-  const handleExportCSV = () => {
-    if (events.length === 0) {
-      alert("ไม่มีข้อมูลสำหรับส่งออก");
-      return;
-    }
-    let csv = "\uFEFFลำดับ,วันเวลา,สถานที่,ห้อง/จุดติดตั้ง,รหัสอุปกรณ์,ประเภทเหตุการณ์,สถานะการช่วยเหลือ,ผู้เข้าช่วยเหลือ,เวลาที่เข้าช่วยเหลือ,บันทึก\n";
-    events.forEach((e, idx) => {
-      const statusText = e.status === 'resolved' ? 'ช่วยเหลือแล้ว' : (e.status === 'false_alarm' ? 'สัญญาณหลอก' : (e.status === 'pending' ? 'รอตรวจสอบ/ช่วยเหลือ' : 'ปกติ'));
-      const eventText = getEventNameText(e.name);
-      const resAt = e.resolved_at ? formatDateTime(e.resolved_at) : '-';
-      csv += `${idx + 1},"${formatDateTime(e.created_at)}","${e.group_name || '-'}","${e.device_name || '-'}","${e.device_code || '-'}","${eventText}","${statusText}","${e.resolved_by || '-'}","${resAt}","${e.resolution_note || '-'}"\n`;
-    });
+  // ส่งออกข้อมูลทั้งหมดตามตัวกรองปัจจุบันเป็น CSV
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const params: any = { limit: 'all' };
+      if (filterType !== 'all') params.name = filterType;
+      if (filterGroup !== 'all') params.group_id = filterGroup;
+      if (search.trim()) params.search = search.trim();
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fall_detection_history_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+      const res = await eventService.getAll(params);
+      const exportEvents = res.data.events || [];
+
+      if (exportEvents.length === 0) {
+        alert("ไม่มีข้อมูลสำหรับส่งออกตามตัวกรองที่เลือก");
+        return;
+      }
+
+      let csv = "\uFEFFลำดับ,วันเวลา,สถานที่,ห้อง/จุดติดตั้ง,รหัสอุปกรณ์,ประเภทเหตุการณ์\n";
+      exportEvents.forEach((e: any, idx: number) => {
+        const eventText = getEventNameText(e.name);
+        csv += `${idx + 1},"${formatDateTime(e.created_at)}","${e.group_name || '-'}","${e.device_name || '-'}","${e.device_code || '-'}","${eventText}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fall_detection_history_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    } catch (err: any) {
+      console.error("ส่งออก CSV ล้มเหลว:", err);
+      alert("เกิดข้อผิดพลาดในการส่งออกไฟล์ CSV");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -237,7 +288,7 @@ export default function HistoryPage() {
       )}
 
       {/* 2. การ์ดสรุปสถิติ (KPI Summary) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 mb-6">
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-gray-500 text-xs mb-1">
             <span>การล้มทั้งหมด</span>
@@ -247,45 +298,39 @@ export default function HistoryPage() {
             <span className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.total_falls}</span>
             <span className="text-xs text-gray-400">ครั้ง</span>
           </div>
-          <span className="text-[11px] text-gray-400 mt-2">บันทึกทั้งหมดในระบบ</span>
+          <span className="text-[11px] text-gray-400 mt-2">
+            {filterGroup === 'all' ? 'บันทึกทั้งหมดในระบบ' : 'บันทึกในสถานที่ที่เลือก'}
+          </span>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-gray-500 text-xs mb-1">
-            <span>รอการช่วยเหลือ (Pending)</span>
-            <span className="p-1.5 bg-red-50 text-red-600 rounded-lg font-bold animate-pulse">⏳</span>
+            <span>บันทึกเหตุการณ์ทั้งหมด</span>
+            <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold">📋</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-red-600">{stats.pending_falls}</span>
-            <span className="text-xs text-red-500 font-semibold">เคสฉุกเฉิน</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-blue-600">{total}</span>
+            <span className="text-xs text-gray-400">รายการ</span>
           </div>
-          <span className="text-[11px] text-red-400 mt-2">ต้องการการเข้าดูแลทันที</span>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-gray-500 text-xs mb-1">
-            <span>ช่วยเหลือเรียบร้อย</span>
-            <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg font-bold">✅</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{stats.resolved_falls}</span>
-            <span className="text-xs text-gray-400">ครั้ง</span>
-          </div>
-          <span className="text-[11px] text-emerald-600 mt-2">ปลอดภัยทุกเหตุการณ์</span>
+          <span className="text-[11px] text-gray-400 mt-2">
+            {filterGroup === 'all' ? 'ตามเงื่อนไขตัวกรองปัจจุบัน' : 'ในสถานที่ที่เลือก'}
+          </span>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-gray-500 text-xs mb-1">
             <span>อุปกรณ์ที่เฝ้าระวัง</span>
-            <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold">📡</span>
+            <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg font-bold">📡</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-blue-600">
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600">
               {stats.online_devices} / {stats.total_devices}
             </span>
             <span className="text-xs text-emerald-600 font-medium">ออนไลน์</span>
           </div>
-          <span className="text-[11px] text-gray-400 mt-2">พร้อมตรวจจับตลอด 24 ชม.</span>
+          <span className="text-[11px] text-gray-400 mt-2">
+            {filterGroup === 'all' ? 'พร้อมตรวจจับตลอด 24 ชม.' : 'อุปกรณ์ในสถานที่นี้'}
+          </span>
         </div>
       </div>
 
@@ -298,16 +343,18 @@ export default function HistoryPage() {
               <span>บันทึกประวัติเหตุการณ์ (Activity & Incident Logs)</span>
               <span className="text-xs font-normal text-gray-400">(พบ {total} รายการ)</span>
             </h2>
-            <p className="text-xs text-gray-400">บันทึกวันเวลา สถานที่ และการเข้าช่วยเหลือผู้ป่วย/ผู้สูงอายุ</p>
+            <p className="text-xs text-gray-400">บันทึกวันเวลา สถานที่ และเหตุการณ์ความเคลื่อนไหวทั้งหมดที่ตรวจพบ</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button 
               onClick={handleExportCSV} 
-              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition flex items-center gap-1.5"
+              disabled={isExporting || total === 0}
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
+              title="ดาวน์โหลดข้อมูลทั้งหมดตามตัวกรองปัจจุบัน"
             >
-              <Download size={14} />
-              <span>Export CSV</span>
+              <Download size={14} className={isExporting ? "animate-bounce" : ""} />
+              <span>{isExporting ? "กำลังส่งออก..." : `Export CSV (${total})`}</span>
             </button>
             <button 
               onClick={refreshAll} 
@@ -320,14 +367,14 @@ export default function HistoryPage() {
         </div>
 
         {/* แถบตัวกรอง (Filters Bar) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200/80">
           <div>
             <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
               <Filter size={11} /> ประเภทเหตุการณ์
             </label>
             <select 
               value={filterType} 
-              onChange={(e) => setFilterType(e.target.value)} 
+              onChange={(e) => handleFilterTypeChange(e.target.value)} 
               className="w-full text-xs bg-white border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="fall">🚨 เฉพาะการล้ม (Falls Only)</option>
@@ -344,7 +391,7 @@ export default function HistoryPage() {
             <label className="block text-[11px] font-bold text-gray-600 mb-1">กลุ่ม / สถานที่</label>
             <select 
               value={filterGroup} 
-              onChange={(e) => setFilterGroup(e.target.value)} 
+              onChange={(e) => handleFilterGroupChange(e.target.value)} 
               className="w-full text-xs bg-white border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="all">ทุกสถานที่ (All Groups)</option>
@@ -355,27 +402,13 @@ export default function HistoryPage() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-600 mb-1">สถานะการช่วยเหลือ</label>
-            <select 
-              value={filterStatus} 
-              onChange={(e) => setFilterStatus(e.target.value)} 
-              className="w-full text-xs bg-white border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            >
-              <option value="all">ทุกสถานะ (All Status)</option>
-              <option value="pending">⏳ ยังไม่เข้าช่วยเหลือ (Pending)</option>
-              <option value="resolved">✅ ช่วยเหลือแล้ว (Resolved)</option>
-              <option value="false_alarm">⚠️ สัญญาณเตือนหลอก (False Alarm)</option>
-            </select>
-          </div>
-
-          <div>
             <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
               <Search size={11} /> ค้นหาห้อง / อุปกรณ์
             </label>
             <input 
               type="text" 
               value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
+              onChange={(e) => handleSearchChange(e.target.value)} 
               placeholder="เช่น ห้องนอน 101..." 
               className="w-full text-xs bg-white border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
@@ -389,23 +422,20 @@ export default function HistoryPage() {
               <tr>
                 <th className="py-3 px-4">วันและเวลาที่เกิดเหตุ</th>
                 <th className="py-3 px-4">สถานที่ & จุดติดตั้ง</th>
-                <th className="py-3 px-4">เหตุการณ์</th>
-                <th className="py-3 px-4">สถานะช่วยเหลือ</th>
-                <th className="py-3 px-4">ผู้เข้าช่วยเหลือ / บันทึก</th>
-                <th className="py-3 px-4 text-center">จัดการเหตุการณ์</th>
+                <th className="py-3 px-4">เหตุการณ์ที่เกิดขึ้น</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                  <td colSpan={3} className="py-8 text-center text-gray-400">
                     <RefreshCw className="animate-spin inline-block mr-2" size={18} />
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : events.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                  <td colSpan={3} className="py-8 text-center text-gray-400">
                     <div className="text-3xl mb-1">🔍</div>
                     <div>ไม่พบรายการเหตุการณ์ตามเงื่อนไขที่เลือก</div>
                   </td>
@@ -414,15 +444,15 @@ export default function HistoryPage() {
                 events.map((ev) => {
                   const isFall = ev.name === 'fall';
                   const isProlongedStay = ev.name === 'prolonged_stay';
-                  const isAlert = isFall || isProlongedStay;
-                  const isPending = isAlert && ev.status === 'pending';
 
                   return (
                     <tr 
                       key={ev.id} 
                       className={`hover:bg-gray-50/80 transition-colors ${
-                        isPending 
-                          ? (isFall ? 'bg-red-50/40' : 'bg-orange-50/40') 
+                        isFall 
+                          ? 'bg-red-50/40' 
+                          : isProlongedStay 
+                          ? 'bg-orange-50/40' 
                           : ''
                       }`}
                     >
@@ -478,71 +508,6 @@ export default function HistoryPage() {
                           </span>
                         )}
                       </td>
-
-                      {/* สถานะช่วยเหลือ */}
-                      <td className="py-3 px-4">
-                        {isAlert ? (
-                          isPending ? (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-white ${
-                              isFall ? 'bg-red-600 animate-pulse' : 'bg-orange-500'
-                            }`}>
-                              <Clock size={12} /> {isFall ? 'ยังไม่เข้าช่วยเหลือ' : 'รอตรวจสอบ'}
-                            </span>
-                          ) : ev.status === 'resolved' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                              <CheckCircle size={12} /> {isFall ? 'ช่วยเหลือแล้ว' : 'ตรวจสอบแล้ว'}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-100 text-amber-700 border border-amber-200">
-                              <AlertCircle size={12} /> สัญญาณหลอก
-                            </span>
-                          )
-                        ) : (ev.name === 'online' || ev.name === 'offline') ? (
-                          <span className="text-gray-400 text-[11px]">- สถานะระบบ -</span>
-                        ) : (
-                          <span className="text-gray-400 text-[11px]">- กิจกรรมปกติ -</span>
-                        )}
-                      </td>
-
-                      {/* ผู้ช่วยเหลือ / บันทึก */}
-                      <td className="py-3 px-4">
-                        {ev.resolved_by ? (
-                          <div>
-                            <p className="font-bold text-gray-800 text-[11px]">👤 {ev.resolved_by}</p>
-                            <p className="text-[10px] text-gray-500">{formatDateTime(ev.resolved_at)}</p>
-                            {ev.resolution_note && (
-                              <p className="text-[10px] text-emerald-600 mt-0.5 font-medium">&quot;{ev.resolution_note}&quot;</p>
-                            )}
-                          </div>
-                        ) : isPending ? (
-                          <span className={`${isFall ? 'text-red-500' : 'text-orange-500'} font-semibold text-[11px]`}>
-                            {isFall ? 'รอเจ้าหน้าที่เข้าช่วยเหลือ' : 'รอเจ้าหน้าที่ตรวจสอบ'}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300 text-[10px]">-</span>
-                        )}
-                      </td>
-
-                      {/* ปุ่มจัดการเหตุการณ์ */}
-                      <td className="py-3 px-4 text-center">
-                        {isPending ? (
-                          <button 
-                            onClick={() => {
-                              setResolveAction("resolved");
-                              setResolveNote("");
-                              setResolveModal({ show: true, event: ev });
-                            }} 
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1 mx-auto"
-                          >
-                            <CheckCircle2 size={13} />
-                            <span>{isFall ? 'ช่วยเหลือแล้ว' : 'ตรวจสอบแล้ว'}</span>
-                          </button>
-                        ) : isAlert ? (
-                          <span className="text-[10px] text-gray-400">ปิดงานเรียบร้อย</span>
-                        ) : (
-                          <span className="text-gray-300 text-[10px]">-</span>
-                        )}
-                      </td>
                     </tr>
                   );
                 })
@@ -550,93 +515,95 @@ export default function HistoryPage() {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* 4. Modal สำหรับบันทึกการเข้าช่วยเหลือ */}
-      {resolveModal.show && resolveModal.event && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="font-bold text-base text-gray-800 flex items-center gap-2">
-                <span>บันทึกการเข้าช่วยเหลือ</span>
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-mono">
-                  #{resolveModal.event.id}
-                </span>
-              </h3>
-              <button 
-                onClick={() => setResolveModal({ show: false, event: null })} 
-                className="text-gray-400 hover:text-gray-600 p-1"
+        {/* แถบควบคุมการแบ่งหน้า (Pagination Controls) & เลือกจำนวนต่อหน้า */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
+          {/* ซ้าย: แสดงจำนวนต่อหน้า และข้อความสรุป */}
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-medium">แสดงต่อหน้า:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(e.target.value)}
+                className="bg-white border border-gray-300 rounded-lg py-1 px-2.5 text-xs text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
               >
-                <X size={18} />
+                <option value="50">50 รายการ</option>
+                <option value="100">100 รายการ</option>
+                <option value="250">250 รายการ</option>
+                <option value="all">ทั้งหมด (All Events)</option>
+              </select>
+            </div>
+            <span className="text-gray-400">
+              {total === 0
+                ? "ไม่พบข้อมูล"
+                : pageSize === "all"
+                ? `แสดงทั้งหมด ${total} รายการ`
+                : `แสดง ${(page - 1) * Number(pageSize) + 1} - ${Math.min(page * Number(pageSize), total)} จาก ${total} รายการ`}
+            </span>
+          </div>
+
+          {/* ขวา: ปุ่มเปลี่ยนหน้า (แสดงเฉพาะเมื่อไม่ได้เลือก "ทั้งหมด" และมีมากกว่า 1 หน้า) */}
+          {pageSize !== "all" && totalPages > 1 && (
+            <div className="flex items-center gap-1 w-full sm:w-auto justify-center sm:justify-end">
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                title="หน้าแรก"
+              >
+                <ChevronsLeft size={15} />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                title="ก่อนหน้า"
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              <div className="flex items-center gap-1 mx-1">
+                {getPageNumbers().map((pNum, idx) =>
+                  pNum === "..." ? (
+                    <span key={`dots-${idx}`} className="px-2 text-gray-400">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${pNum}`}
+                      onClick={() => setPage(Number(pNum))}
+                      className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        page === pNum
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "border border-gray-200 text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {pNum}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                title="ถัดไป"
+              >
+                <ChevronRight size={15} />
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                title="หน้าสุดท้าย"
+              >
+                <ChevronsRight size={15} />
               </button>
             </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-3 rounded-xl text-xs text-gray-600 space-y-1 border border-gray-200/60">
-                <p><strong>สถานที่:</strong> {resolveModal.event.group_name || 'ทั่วไป'}</p>
-                <p><strong>ห้อง/จุดติดตั้ง:</strong> {resolveModal.event.device_name} ({resolveModal.event.device_code})</p>
-                <p><strong>เวลาเกิดเหตุ:</strong> {formatDateTime(resolveModal.event.created_at)}</p>
-              </div>
-
-              {/* เลือกผลการตรวจสอบ */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">ผลการตรวจสอบเหตุการณ์</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setResolveAction("resolved")} 
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${resolveAction === 'resolved' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs' : 'bg-white border-gray-200 text-gray-600'}`}
-                  >
-                    <CheckCircle size={14} />
-                    <span>เข้าช่วยเหลือแล้ว</span>
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setResolveAction("false_alarm")} 
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${resolveAction === 'false_alarm' ? 'bg-amber-50 border-amber-500 text-amber-700 shadow-xs' : 'bg-white border-gray-200 text-gray-600'}`}
-                  >
-                    <AlertCircle size={14} />
-                    <span>สัญญาณเตือนหลอก</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* ช่องกรอกบันทึกเพิ่มเติม */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  บันทึกเพิ่มเติม (Note)
-                </label>
-                <textarea 
-                  rows={3} 
-                  value={resolveNote} 
-                  onChange={(e) => setResolveNote(e.target.value)} 
-                  placeholder={resolveAction === 'resolved' ? "เช่น พยุงลุกขึ้น ปฐมพยาบาลเบื้องต้นแล้วปลอดภัยดี..." : "เช่น วัตถุตกหล่น ไม่พบคนหกล้ม..."} 
-                  className="w-full text-xs border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-
-              {/* ปุ่มบันทึก */}
-              <div className="flex gap-2 justify-end pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setResolveModal({ show: false, event: null })} 
-                  className="px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition"
-                >
-                  ยกเลิก
-                </button>
-                <button 
-                  type="button" 
-                  disabled={isSubmitting} 
-                  onClick={handleConfirmResolve} 
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow transition disabled:opacity-50"
-                >
-                  {isSubmitting ? "กำลังบันทึก..." : "ยืนยันการบันทึก"}
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
     </div>
   );

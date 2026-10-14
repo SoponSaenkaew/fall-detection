@@ -52,8 +52,9 @@ void loop() {
   readLD2410();
 #endif
 
-  // 4. ตรวจสอบปุ่มกดจำลองสถานะ
+  // 4. ตรวจสอบปุ่มกดจำลองสถานะ และปุ่ม BOOT (กดค้าง 3 วิ เพื่อรีเซ็ต Wi-Fi)
   checkSimulationButtons();
+  checkResetButton();
 
   // 5. อัปเดตไฟแสดงสถานะ RGB และเสียง Buzzer/Relay
   updateRGBStatus(isWiFiConnected(), isMqttConnected());

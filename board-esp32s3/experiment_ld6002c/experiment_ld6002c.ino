@@ -81,6 +81,7 @@ unsigned long adl_trial_timeout       = 10000; // เวลารอทดสอ
 
 bool enable_buzzer = true;              // เปิด/ปิดเสียงไซเรน Buzzer
 bool enable_raw_hex_dump = false;       // แสดงแพ็กเก็ตดิบทุกไบต์
+bool height_stream_enabled = true;      // เปิดสตรีม User Log (0x0E01) อัตโนมัติเป็นค่าเริ่มต้น
 String last_radar_ack_msg = "ยังไม่มีการส่งคำสั่ง";
 
 // ================= CHECKSUM (~XOR) =================
@@ -259,8 +260,18 @@ void sendConfigToRadarInt(uint16_t type, uint32_t value) {
 }
 
 void sendRoomSizeToRadar(float width, float length) {
-  float rect_XL = -width; float rect_XR = width;
-  float rect_ZF = length; float rect_ZB = -length;
+  // คำนวณระยะจากจุดศูนย์กลางไปยังผนังแต่ละด้าน (กึ่งกลางห้อง: กว้าง / 2 และ ยาว / 2)
+  float half_w = width / 2.0f;
+  float half_l = length / 2.0f;
+
+  // จำกัดระยะให้อยู่ในขอบเขตที่เรดาร์ HLK-LD6002C รองรับได้ (0.3m ถึง 1.5m ต่อด้าน)
+  if (half_w > 1.5f) half_w = 1.5f;
+  if (half_w < 0.3f) half_w = 0.3f;
+  if (half_l > 1.5f) half_l = 1.5f;
+  if (half_l < 0.3f) half_l = 0.3f;
+
+  float rect_XL = -half_w; float rect_XR = half_w;
+  float rect_ZF = half_l;  float rect_ZB = -half_l;
   
   uint8_t frame[25];
   frame[0] = 0x01;
@@ -276,7 +287,8 @@ void sendRoomSizeToRadar(float width, float length) {
   frame[24] = calculateChecksum(&frame[8], 16);
   
   RadarSerial.write(frame, 25);
-  Serial.printf("📡 [CONFIG TX] กำหนดขนาดห้อง (0x0E0C): กว้าง +/-%.1fm, ยาว +/-%.1fm (TX Pin %d)\n", width, length, radar_tx_pin);
+  Serial.printf("📡 [CONFIG TX] กำหนดขนาดห้อง (0x0E0C): ขนาดห้อง %.1fx%.1fm -> รัศมีกึ่งกลาง +/-%.2fm (กว้าง), +/-%.2fm (ยาว) (TX Pin %d)\n", 
+                width, length, half_w, half_l, radar_tx_pin);
 }
 
 void applyAllConfigsToRadar() {
@@ -295,8 +307,31 @@ void applyAllConfigsToRadar() {
 
   sendRoomSizeToRadar(room_width, room_length);
   delay(100);
+  if (height_stream_enabled) {
+    sendRadarUserLog(true);
+    delay(100);
+  }
   last_radar_ack_msg = "ส่งคำสั่งแล้ว กำลังรอเรดาร์ตอบรับ...";
   addWebLog("📤 [CONFIG] ส่งพารามิเตอร์เข้าเรดาร์ (สูง " + String(mount_height, 1) + "m, เกณฑ์ " + String(fall_threshold, 2) + "m, ขอบเขต " + String(room_width, 1) + "x" + String(room_length, 1) + "m)");
+}
+
+// ฟังก์ชันส่งคำสั่งเปิด/ปิดสตรีมข้อมูล User Log / Height (Type 0x0E01)
+void sendRadarUserLog(bool enable) {
+  uint8_t frame[13];
+  frame[0] = 0x01; // SOF
+  frame[1] = 0x00; frame[2] = 0x00; // Frame ID
+  frame[3] = 0x00; frame[4] = 0x04; // Data Length = 4 bytes
+  frame[5] = 0x0E; frame[6] = 0x01; // Message Type 0x0E01
+  frame[7] = calculateChecksum(frame, 7);
+
+  uint32_t val = enable ? 1 : 0; // 1 = Open, 0 = Close
+  memcpy(&frame[8], &val, 4);
+  frame[12] = calculateChecksum(&frame[8], 4);
+
+  RadarSerial.write(frame, 13);
+  height_stream_enabled = enable;
+  addWebLog(enable ? "🚀 [RADAR 0x0E01] ส่งคำสั่ง 'เปิด' สตรีมข้อมูลความสูง (User Log = 1)" 
+                   : "🛑 [RADAR 0x0E01] ส่งคำสั่ง 'ปิด' สตรีมข้อมูลความสูง (User Log = 0)");
 }
 
 // ================= TRIAL & METRIC RECORDING =================
@@ -528,7 +563,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="card" style="border-left: 5px solid var(--primary);">
       <div class="card-title">
         <span>📏 ระดับความสูงเป้าหมายสด (Target Height - แสดงเพื่อดีบัค)</span>
-        <span id="heightBadge" class="badge" style="background:#0369a1; color:#e0f2fe;">กำลังวัดค่า...</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button id="btnStreamToggle" onclick="toggleStream()" class="badge" style="background:#475569; color:#fff; border:none; cursor:pointer; padding:4px 10px; font-weight:600;">⚡ สตรีม: ปิดอยู่</button>
+          <span id="heightBadge" class="badge" style="background:#0369a1; color:#e0f2fe;">กำลังวัดค่า...</span>
+        </div>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
         <div style="font-size:2rem; font-weight:bold; color:var(--primary);" id="personHeightVal">-- ม.</div>
@@ -988,6 +1026,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
           const hBadge = document.getElementById('heightBadge');
           const gBar = document.getElementById('heightGaugeBar');
 
+          // อัปเดตปุ่มสตรีมความสูง (0x0E01)
+          const btnStream = document.getElementById('btnStreamToggle');
+          if (btnStream) {
+            if (data.height_stream) {
+              btnStream.textContent = '⚡ สตรีม: เปิดอยู่ (0x0E01)';
+              btnStream.style.background = 'var(--success)';
+            } else {
+              btnStream.textContent = '⚡ สตรีม: ปิดอยู่ (คลิกเปิด)';
+              btnStream.style.background = '#475569';
+            }
+          }
+
           if (rawD > 0.1) {
             pEl.innerText = pH.toFixed(2) + ' ม.';
             dEl.innerText = 'ระยะจากเพดาน: ' + rawD.toFixed(2) + ' ม.';
@@ -1121,6 +1171,16 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         });
     }
 
+    function toggleStream() {
+      const btn = document.getElementById('btnStreamToggle');
+      if (btn) btn.textContent = 'กำลังส่ง...';
+      fetch('/api/stream/toggle', { method: 'POST' })
+        .then(() => {
+          setTimeout(updateStatus, 300);
+        })
+        .catch(err => alert('เกิดข้อผิดพลาดในการเปิด/ปิดสตรีม'));
+    }
+
     function clearWebLogs() {
       fetch('/api/logs/clear', { method: 'POST' })
         .then(() => {
@@ -1223,6 +1283,7 @@ void handleStatusApi() {
   json += "\"person_height\":" + String(person_height, 2) + ",";
   json += "\"raw_distance\":" + String(raw_radar_distance, 2) + ",";
   json += "\"buzzer_on\":" + String(enable_buzzer ? "true" : "false") + ",";
+  json += "\"height_stream\":" + String(height_stream_enabled ? "true" : "false") + ",";
   json += "\"mount_height\":" + String(mount_height, 2) + ",";
   json += "\"fall_threshold\":" + String(fall_threshold, 2) + ",";
   json += "\"room_width\":" + String(room_width, 1) + ",";
@@ -1461,6 +1522,11 @@ void handleLogsClear() {
   server.send(200, "text/plain", "OK");
 }
 
+void handleStreamToggle() {
+  sendRadarUserLog(!height_stream_enabled);
+  server.send(200, "application/json", "{\"status\":\"ok\",\"height_stream\":" + String(height_stream_enabled ? "true" : "false") + "}");
+}
+
 // ================= ARDUINO SETUP =================
 void setup() {
   Serial.begin(115200);
@@ -1525,6 +1591,7 @@ void setup() {
   server.on("/api/logs", HTTP_GET, handleLogsApi);
   server.on("/api/config/rawhex", HTTP_POST, handleRawHexToggle);
   server.on("/api/logs/clear", HTTP_POST, handleLogsClear);
+  server.on("/api/stream/toggle", HTTP_POST, handleStreamToggle);
 
   // Web Browser OTA Handler
   server.on("/update", HTTP_POST, []() {
@@ -1792,25 +1859,114 @@ void loop() {
         addWebLog("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x" + String(msgType, HEX));
         Serial.printf("📥 [RADAR ACK] ตอบรับคำสั่ง Config: 0x%04X\n", msgType);
       }
-      // ค. เฟรมความสูงเป้าหมาย (0x0E0E)
-      else if (msgType == 0x0E0E && dataLen == 4) {
-        float dist;
-        memcpy(&dist, payload, 4);
-        if (dist >= 0.1f && dist <= 5.0f) {
-          raw_radar_distance = dist;
-          // คำนวณความสูงจริงของคนจากพื้น: ความสูงติดตั้ง (2.2m) - ระยะจากเพดาน (เช่น ยืน 0.64m -> คนสูง 1.56m)
-          person_height = max(0.0f, mount_height - dist);
+      // ค. เฟรมความสูงเป้าหมายสด (Type 0x0E0E - Height Upload Result)
+      else if (msgType == 0x0E0E) {
+        // 1. ดึงสตริง Hex ดิบของ DATA ทั้งหมดเพื่อตรวจสอบ
+        String hexDbg = "";
+        for (int i = 0; i < min((int)dataLen, 16); i++) {
+          if (payload[i] < 0x10) hexDbg += "0";
+          hexDbg += String(payload[i], HEX) + " ";
+        }
+        hexDbg.toUpperCase();
+
+        // 2. ถอดรหัส DATA 4 ไบต์แบบ Little Endian (Small End Order: LSB -> MSB)
+        uint32_t raw_u32 = 0;
+        float raw_float = 0.0f;
+        float measured_val = 0.0f;
+        bool valid_height = false;
+
+        if (dataLen >= 4) {
+          // ประกอบร่าง Little Endian: DATA[0]=LSB ... DATA[3]=MSB
+          raw_u32 = ((uint32_t)payload[0]) |
+                    ((uint32_t)payload[1] << 8) |
+                    ((uint32_t)payload[2] << 16) |
+                    ((uint32_t)payload[3] << 24);
+
+          // แปลงเป็น Float (IEEE 754) ตามหน้า 3 ของคู่มือโปรโตคอล
+          raw_float = *(float *)&raw_u32;
+
+          // การตีความค่า:
+          // ก. กรณีส่งเป็น Float หน่วยเมตร (เช่น 1.70, 0.45)
+          if (!isnan(raw_float) && !isinf(raw_float) && raw_float >= 0.05f && raw_float <= 5.0f) {
+            measured_val = raw_float;
+            valid_height = true;
+          }
+          // ข. กรณีส่งเป็น Uint32 หน่วยมิลลิเมตร (mm) เช่น 1700, 450
+          else if (raw_u32 >= 100 && raw_u32 <= 5000) {
+            measured_val = (float)raw_u32 / 1000.0f;
+            valid_height = true;
+          }
+          // ค. กรณีส่งเป็น Uint32 หน่วยเซนติเมตร (cm) เช่น 170, 45
+          else if (raw_u32 >= 10 && raw_u32 <= 400) {
+            measured_val = (float)raw_u32 / 100.0f;
+            valid_height = true;
+          }
+        } else if (dataLen == 2) {
+          uint16_t u16 = payload[0] | (payload[1] << 8);
+          measured_val = (float)u16 / 100.0f;
+          valid_height = (measured_val >= 0.05f && measured_val <= 5.0f);
+        } else if (dataLen == 1) {
+          measured_val = (float)payload[0] / 10.0f;
+          valid_height = (measured_val >= 0.05f && measured_val <= 5.0f);
+        }
+
+        if (valid_height) {
+          // ตามเอกสาร: ความสูงเป้าหมายคือระยะห่างจาก Point Cloud ถึงพื้นดิน (Distance to ground)
+          person_height = measured_val;
+          raw_radar_distance = max(0.0f, mount_height - measured_val);
 
           static unsigned long lastHeightLog = 0;
-          static float lastLoggedH = -1.0f;
-          if ((now - lastHeightLog >= 2500) || (abs(person_height - lastLoggedH) >= 0.25f)) {
+          if (now - lastHeightLog >= 1000) {
             lastHeightLog = now;
-            lastLoggedH = person_height;
             String posture = "ยืนปกติ";
             if (person_height <= fall_threshold && person_height > 0.05f) posture = "นอนราบ (ล้ม!)";
             else if (person_height <= 1.20f && person_height > 0.45f) posture = "นั่ง";
-            addWebLog("📏 [TARGET] ความสูงคน: " + String(person_height, 2) + "m | ระยะเพดาน: " + String(dist, 2) + "m (" + posture + ")");
+            addWebLog("📏 [0x0E0E PARSED] ความสูงจากพื้น: " + String(person_height, 2) + "m (" + posture + 
+                      ") | ระยะเพดาน: " + String(raw_radar_distance, 2) + "m | Uint32: " + String(raw_u32) + 
+                      " | Float: " + String(raw_float, 3) + 
+                      " | RAW: " + hexDbg);
           }
+        } else {
+          static unsigned long lastErrH = 0;
+          if (now - lastErrH >= 2000) {
+            lastErrH = now;
+            addWebLog("🎯 [0x0E0E RAW] Len=" + String(dataLen) + " Hex: " + hexDbg + 
+                      " | Uint32: " + String(raw_u32) + 
+                      " | Float: " + String(raw_float, 3));
+          }
+        }
+      }
+      // ง. เฟรมตอบกลับค่าพารามิเตอร์เรดาร์ (Type 0x0E06)
+      else if (msgType == 0x0E06) {
+        if (dataLen >= 28) {
+          float r_high, r_thresh, r_xl, r_xr, r_zf, r_zb;
+          uint32_t r_sens;
+          memcpy(&r_high, &payload[0], 4);
+          memcpy(&r_thresh, &payload[4], 4);
+          memcpy(&r_sens, &payload[8], 4);
+          memcpy(&r_xl, &payload[12], 4);
+          memcpy(&r_xr, &payload[16], 4);
+          memcpy(&r_zf, &payload[20], 4);
+          memcpy(&r_zb, &payload[24], 4);
+          addWebLog("📋 [RADAR 0x0E06] คอนฟิกในเซนเซอร์: สูง " + String(r_high, 2) + "m | เกณฑ์ " + String(r_thresh, 2) + "m | ความไว " + String(r_sens));
+        } else {
+          addWebLog("📋 [RADAR 0x0E06] เรดาร์ตอบกลับพารามิเตอร์ (Len=" + String(dataLen) + ")");
+        }
+      }
+      // จ. ตรวจจับ Message Type อื่นๆ เพื่อให้รู้ว่าเรดาร์ส่งอะไรมา (ละเว้น 0x0F09)
+      else if (msgType != 0x0E02 && msgType != 0x0E04 && msgType != 0x0E08 && msgType != 0x0E0C && msgType != 0x0F09) {
+        static unsigned long last_unknown_log = 0;
+        if (now - last_unknown_log >= 2000) {
+          last_unknown_log = now;
+          String hexStr = "";
+          for (int i = 0; i < min((int)dataLen, 16); i++) {
+            if (payload[i] < 0x10) hexStr += "0";
+            hexStr += String(payload[i], HEX) + " ";
+          }
+          hexStr.toUpperCase();
+          char uMsg[96];
+          snprintf(uMsg, sizeof(uMsg), "📦 [RX TYPE] 0x%04X (Len=%d) Data: %s", msgType, dataLen, hexStr.c_str());
+          addWebLog(String(uMsg));
         }
       }
     }

@@ -20,8 +20,8 @@ func (s *Service) Create(name string, userID uint) error {
 
 func (s *Service) GetAll(userID uint) ([]iot.Group, error) {
 	var groups []iot.Group
-	// Preload เพื่อดึงข้อมูล Device ที่สังกัดกลุ่มนี้ออกมาด้วยค่ะ
-	err := s.db.Where("user_id = ?", userID).Preload("Devices").Find(&groups).Error
+	// Preload เพื่อดึงข้อมูล Device และพารามิเตอร์การตั้งค่าที่สังกัดกลุ่มนี้ออกมาด้วย
+	err := s.db.Where("user_id = ?", userID).Preload("Devices").Preload("Devices.Setting").Find(&groups).Error
 	return groups, err
 }
 

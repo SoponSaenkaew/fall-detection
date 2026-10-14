@@ -1,0 +1,648 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-10-13T17:10:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="fig_2_5" name="2.5 MQTT Pub-Sub">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="c_edge" value="&lt;b&gt;1. Edge Layer (ห้องน้ำ / จุดติดตั้ง)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="140" y="40" width="540" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="n_esp_node" value="&lt;b&gt;ESP32-S3 Edge Node (MQTT Publisher)&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;• mmWave Radar (LD6002C / LD2410C)&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;• Fall Confirmation Logic&lt;br&gt;• Active Buzzer &amp;amp; Status RGB LED&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;• Edge Noise Filtering (FreeRTOS)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="170" y="80" width="480" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="c_vm" value="&lt;b&gt;2. Azure VM (Burstable B1s - Ubuntu) | Docker Network: proxy-network&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#3B82F6;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="120" y="260" width="580" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="n_mosq" value="&lt;b&gt;Eclipse Mosquitto MQTT Broker (Port 1883)&lt;/b&gt;&lt;br&gt;&lt;font color='#6D28D9' size='1'&gt;Container: prod_mqtt_broker | Topic: fall/device_id/event | TLS/QoS 1&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#7C3AED;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="160" y="310" width="500" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_go_sub" value="&lt;b&gt;Go Backend Service (Subscriber - Paho MQTT Client)&lt;/b&gt;&lt;br&gt;&lt;font color='#15803D' size='1'&gt;Event Consumer, Database Persist Worker &amp;amp; WebSocket Broadcast Hub&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="160" y="450" width="500" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="c_db" value="&lt;b&gt;Cloud Database&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="100" y="640" width="290" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="n_pg_db" value="&lt;b&gt;Azure Database for PostgreSQL&lt;/b&gt;&lt;br&gt;&lt;font color='#0F766E' size='1'&gt;Flexible Server (Port 5432 / SSL)&lt;br&gt;ตาราง: events, users, devices&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="120" y="680" width="250" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ui" value="&lt;b&gt;3. Presentation Layer&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=15;spacingTop=10;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="430" y="640" width="290" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="n_next_ui" value="&lt;b&gt;Next.js 14 Web Dashboard&lt;/b&gt;&lt;br&gt;&lt;font color='#B45309' size='1'&gt;Web Client (Real-time Monitor)&lt;br&gt;WebSocket (/ws) | Audio Alert&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#B45309;" vertex="1" parent="1">
+          <mxGeometry x="450" y="680" width="250" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="e25_1" value="MQTT Publish (Topic: fall/device_id/event)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_esp_node" target="n_mosq" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25_2" value="MQTT Dispatch (Internal Event)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_mosq" target="n_go_sub" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25_3" value="SQL INSERT (Port 5432)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_go_sub" target="n_pg_db" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="410" y="580" />
+              <mxPoint x="245" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e25_4" value="WebSocket Push (/ws)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_go_sub" target="n_next_ui" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="410" y="580" />
+              <mxPoint x="575" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_2_6" name="2.6 LINE Webhook Flow">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="s1" value="&lt;b&gt;1. ESP32-S3 ตรวจพบเหตุการณ์ล้ม&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;เซนเซอร์ mmWave Radar ตรวจจับความผิดปกติ และกรองสัญญาณยืนยันการล้ม&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontColor=#0F172A;align=left;spacingLeft=65;" vertex="1" parent="1">
+          <mxGeometry x="130" y="50" width="560" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="Edge Hardware" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontFamily=Sarabun;fontSize=10;fontStyle=1;strokeWidth=1.2;fillColor=#EFF6FF;strokeColor=#3B82F6;fontColor=#1D4ED8;" vertex="1" parent="1">
+          <mxGeometry x="555" y="66" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontFamily=Sarabun;fontSize=15;fontStyle=1;fontColor=#0F172A;fillColor=#EFF6FF;strokeColor=#3B82F6;fontColor=#1D4ED8;" vertex="1" parent="1">
+          <mxGeometry x="145" y="60" width="44" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="&lt;b&gt;2. ส่ง Event ขึ้น Go Backend&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;เซิร์ฟเวอร์รับข้อความผ่าน MQTT Broker และบันทึกประวัติลงฐานข้อมูล PostgreSQL&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontColor=#0F172A;align=left;spacingLeft=65;" vertex="1" parent="1">
+          <mxGeometry x="130" y="160" width="560" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="Cloud Backend" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontFamily=Sarabun;fontSize=10;fontStyle=1;strokeWidth=1.2;fillColor=#FAF5FF;strokeColor=#8B5CF6;fontColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="555" y="176" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="2" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontFamily=Sarabun;fontSize=15;fontStyle=1;fontColor=#0F172A;fillColor=#FAF5FF;strokeColor=#8B5CF6;fontColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="145" y="170" width="44" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="&lt;b&gt;3. ยิง HTTP POST JSON Flex Message&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Go Backend แปลงข้อมูลเป็นรูปแบบการ์ด Flex Message ส่งออกไปยัง LINE Messaging API&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontColor=#0F172A;align=left;spacingLeft=65;" vertex="1" parent="1">
+          <mxGeometry x="130" y="270" width="560" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="HTTPS REST API" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontFamily=Sarabun;fontSize=10;fontStyle=1;strokeWidth=1.2;fillColor=#F0FDFA;strokeColor=#0D9488;fontColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="555" y="286" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="3" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontFamily=Sarabun;fontSize=15;fontStyle=1;fontColor=#0F172A;fillColor=#F0FDFA;strokeColor=#0D9488;fontColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="145" y="280" width="44" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="&lt;b&gt;4. LINE Platform ประมวลผลและส่งต่อ&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;เซิร์ฟเวอร์ LINE ตรวจสอบ Channel Access Token และส่ง Push Notification สู่ปลายทาง&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontColor=#0F172A;align=left;spacingLeft=65;" vertex="1" parent="1">
+          <mxGeometry x="130" y="380" width="560" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="LINE Server" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontFamily=Sarabun;fontSize=10;fontStyle=1;strokeWidth=1.2;fillColor=#F0FDF4;strokeColor=#16A34A;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="555" y="396" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="4" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontFamily=Sarabun;fontSize=15;fontStyle=1;fontColor=#0F172A;fillColor=#F0FDF4;strokeColor=#16A34A;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="145" y="390" width="44" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="&lt;b&gt;5. แจ้งเตือนเด้งบนสมาร์ตโฟนของผู้ดูแล&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ข้อความและเสียงเตือนภัยปรากฏทันที พร้อมปุ่มกดดูแดชบอร์ดและปุ่มโทรฉุกเฉิน&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=12;fontColor=#0F172A;align=left;spacingLeft=65;" vertex="1" parent="1">
+          <mxGeometry x="130" y="490" width="560" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" value="Caregiver App" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontFamily=Sarabun;fontSize=10;fontStyle=1;strokeWidth=1.2;fillColor=#FEF2F2;strokeColor=#DC2626;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="555" y="506" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="5" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontFamily=Sarabun;fontSize=15;fontStyle=1;fontColor=#0F172A;fillColor=#FEF2F2;strokeColor=#DC2626;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="145" y="500" width="44" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="kpi" value="⚡ ระยะเวลาประมวลผลทั้งระบบ (End-to-End Latency) เฉลี่ยไม่เกิน 1.85 – 2.50 วินาที" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F8FAFC;strokeColor=#10B981;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;fontColor=#065F46;align=center;" vertex="1" parent="1">
+          <mxGeometry x="130" y="590" width="560" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e26_1" value="MQTT Publish (TLS)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="s1" target="s2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26_2" value="Webhook Worker Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="s2" target="s3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26_3" value="HTTPS POST (JSON Payload)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="s3" target="s4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26_4" value="Push Notification Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="s4" target="s5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_3_1" name="3.1 Methodology">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p1" value="&lt;font color='#1D4ED8'&gt;PHASE 01&lt;/font&gt;&lt;br&gt;&lt;b&gt;ศึกษาและวิเคราะห์ปัญหา&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Problem Analysis &amp;amp; Requirements&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;align=center;fillColor=#EFF6FF;strokeColor=#3B82F6;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="230" y="50" width="360" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="&lt;font color='#6D28D9'&gt;PHASE 02&lt;/font&gt;&lt;br&gt;&lt;b&gt;ออกแบบฮาร์ดแวร์และวงจร&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Hardware &amp;amp; PCB Schematic Design&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;align=center;fillColor=#FAF5FF;strokeColor=#8B5CF6;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="230" y="170" width="360" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="&lt;font color='#0F766E'&gt;PHASE 03&lt;/font&gt;&lt;br&gt;&lt;b&gt;พัฒนาเฟิร์มแวร์และอัลกอริทึม&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Firmware &amp;amp; FSM Algorithm (ESP32-S3)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;align=center;fillColor=#F0FDFA;strokeColor=#0D9488;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="230" y="290" width="360" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="&lt;font color='#15803D'&gt;PHASE 04&lt;/font&gt;&lt;br&gt;&lt;b&gt;พัฒนาระบบคลาวด์และแดชบอร์ด&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Cloud Backend, Database &amp;amp; Web UI&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;align=center;fillColor=#F0FDF4;strokeColor=#16A34A;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="230" y="410" width="360" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="&lt;font color='#B45309'&gt;PHASE 05&lt;/font&gt;&lt;br&gt;&lt;b&gt;ทดสอบและประเมินผลระบบ&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;Testing, Validation &amp;amp; Evaluation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;align=center;fillColor=#FFFBEB;strokeColor=#D97706;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="230" y="530" width="360" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ep1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="p1" target="p2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="p2" target="p3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="p3" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="p4" target="p5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep5" value="วงรอบการปรับแต่งพารามิเตอร์ (Parameter Tuning)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#D97706;strokeWidth=1.8;strokeDasharray=6 4;fontStyle=1;fontColor=#B45309;fontSize=11;labelBackgroundColor=#FFFFFF;" edge="1" source="p5" target="p3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="572" />
+              <mxPoint x="640" y="332" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_3_2" name="3.2 System Architecture">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" value="&lt;b&gt;1. Perception &amp;amp; Edge Layer&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ชั้นการรับรู้และโหนดอุปกรณ์ขอบ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="290" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ld60" value="&lt;b&gt;HLK-LD6002C&lt;/b&gt;&lt;br&gt;เรดาร์ 60 GHz (UART)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="65" y="110" width="125" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ld24" value="&lt;b&gt;HLK-LD2410C&lt;/b&gt;&lt;br&gt;เรดาร์ 24 GHz (GPIO)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="200" y="110" width="125" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="n_esp" value="&lt;b&gt;ESP32-S3 Microcontroller&lt;/b&gt;&lt;br&gt;Sensor Fusion &amp;amp; FSM (FreeRTOS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="65" y="220" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_buz" value="&lt;b&gt;Active Siren &amp;amp; RGB LED&lt;/b&gt;&lt;br&gt;ไซเรน 85 dB และไฟระบุสถานะ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="65" y="340" width="260" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="&lt;b&gt;2. Network &amp;amp; Broker&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;โครงสร้างเครือข่ายและการส่งผ่าน&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="390" y="50" width="240" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="n_wifi" value="&lt;b&gt;Wi-Fi 802.11 b/g/n&lt;/b&gt;&lt;br&gt;2.4 GHz Local WLAN AP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="405" y="110" width="210" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="n_mqtt" value="&lt;b&gt;Mosquitto MQTT Broker&lt;/b&gt;&lt;br&gt;พอร์ต 1883 / TLS (fall/event)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#7C3AED;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#6D28D9;" vertex="1" parent="1">
+          <mxGeometry x="405" y="220" width="210" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_nginx" value="&lt;b&gt;Nginx Reverse Proxy&lt;/b&gt;&lt;br&gt;พอร์ต 443 (Let's Encrypt TLS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="405" y="340" width="210" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="&lt;b&gt;3. Cloud Platform &amp;amp; Applications&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;บริการคลาวด์และแดชบอร์ดผู้ดูแล&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="50" width="450" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="n_go" value="&lt;b&gt;Go Backend Service&lt;/b&gt;&lt;br&gt;Event Handler &amp;amp; Webhook Worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="695" y="220" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_db" value="&lt;b&gt;PostgreSQL Database&lt;/b&gt;&lt;br&gt;พอร์ต 5432 (SSL Mode)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#0F766E;" vertex="1" parent="1">
+          <mxGeometry x="695" y="340" width="200" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="n_line" value="&lt;b&gt;LINE Messaging API&lt;/b&gt;&lt;br&gt;Flex Message (Latency &amp;lt; 1.85s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#DC2626;strokeWidth=1.8;fontFamily=Sarabun;fontSize=11;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="920" y="110" width="195" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dash" value="&lt;b&gt;Next.js 14 Dashboard&lt;/b&gt;&lt;br&gt;มอนิเตอร์สถานะเรียลไทม์ (WSS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#B45309;" vertex="1" parent="1">
+          <mxGeometry x="920" y="220" width="195" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_care" value="&lt;b&gt;Caregiver Response&lt;/b&gt;&lt;br&gt;ผู้ดูแลเข้าช่วยเหลือ / Audit Log" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="920" y="340" width="195" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s1_esp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_ld60" target="n_esp" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_s2_esp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_ld24" target="n_esp" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_esp_buz" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_esp" target="n_buz" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_wifi_mq" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_wifi" target="n_mqtt" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_esp_mqtt" value="Wi-Fi MQTT TLS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563EB;strokeWidth=2.5;fontStyle=1;fontColor=#1D4ED8;fontSize=10;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_esp" target="n_mqtt" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mqtt_go" value="MQTT Subscribe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7C3AED;strokeWidth=2.5;fontStyle=1;fontColor=#6D28D9;fontSize=10;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_mqtt" target="n_go" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_go_dash" value="WSS Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#16A34A;strokeWidth=2.5;fontStyle=1;fontColor=#15803D;fontSize=10;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_go" target="n_dash" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_go_line" value="HTTP Webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_go" target="n_line" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_go_db" value="SQL Persist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_go" target="n_db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dash_care" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="n_dash" target="n_care" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_3_5" name="3.5 FSM State Machine">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="st_empty" value="&lt;b&gt;EMPTY (IDLE)&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ห้องว่าง / ปิดไฟสถานะ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontFamily=Sarabun;fontSize=13;fontStyle=1;fillColor=#F8FAFC;strokeColor=#64748B;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="st_rec" value="&lt;b&gt;RECOVERY / RESET&lt;/b&gt;&lt;br&gt;&lt;font color='#166534' size='1'&gt;ปลดเตือนภัย / เคลียร์ระบบ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontFamily=Sarabun;fontSize=13;fontStyle=1;fillColor=#F0FDF4;strokeColor=#16A34A;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="st_occ" value="&lt;b&gt;OCCUPIED&lt;/b&gt;&lt;br&gt;&lt;font color='#0284C7' size='1'&gt;มีผู้ใช้งานห้องน้ำปกติ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontFamily=Sarabun;fontSize=13;fontStyle=1;fillColor=#F0F9FF;strokeColor=#0284C7;fontColor=#0369A1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="80" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="st_susp" value="&lt;b&gt;SUSPECTED_FALL&lt;/b&gt;&lt;br&gt;&lt;font color='#92400E' size='1'&gt;สงสัยว่าล้ม (หน่วงเวลา 2.0s)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontFamily=Sarabun;fontSize=13;fontStyle=1;fillColor=#FFFBEB;strokeColor=#D97706;fontColor=#B45309;" vertex="1" parent="1">
+          <mxGeometry x="640" y="240" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="st_conf" value="&lt;b&gt;CONFIRMED_FALL&lt;/b&gt;&lt;br&gt;&lt;font color='#DC2626' size='1'&gt;ยืนยันการล้ม / ไซเรน &amp;amp; LINE&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontFamily=Sarabun;fontSize=13;fontStyle=1;fillColor=#FEF2F2;strokeColor=#DC2626;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="640" y="400" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="ef1" value="ตรวจพบการเข้าห้อง (LD2410)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_empty" target="st_occ" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="475" y="105" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ef2" value="ไม่มีคนในห้อง (No Presence)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.8;strokeDasharray=6 4;fontSize=11;fontStyle=1;fontColor=#64748B;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_occ" target="st_empty" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="475" y="145" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ef3" value="ตรวจพบสัญญาณล้ม (60 GHz)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_occ" target="st_susp" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef4" value="ลุกขึ้นยืนเองได้ &amp;lt; 2s (False Alarm)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;strokeDasharray=6 4;" edge="1" source="st_susp" target="st_occ" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="282" />
+              <mxPoint x="930" y="122" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ef5" value="ไม่ลุกขึ้นยืนครบ 2.0 วินาที" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_susp" target="st_conf" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef6" value="กดปุ่ม Reset หรือ ลุกยืนต่อเนื่อง 2.5s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_conf" target="st_rec" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef7" value="รีเซ็ตกลับสู่สถานะพร้อม" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.8;strokeDasharray=6 4;fontSize=11;fontStyle=1;fontColor=#64748B;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="st_rec" target="st_empty" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_3_6" name="3.6 Fall Filter Flow">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="f_start" value="&lt;b&gt;เรดาร์ 60 GHz ส่งสัญญาณตรวจพบการล้ม&lt;/b&gt;&lt;br&gt;&lt;font color='#2563EB' size='1'&gt;TinyFrame Header: 0x0E02&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="350" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f_timer" value="&lt;b&gt;เริ่มต้นจับเวลาหน่วงยืนยันการล้ม (Fall Delay)&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;บันทึก T_start = millis() | หน่วงเวลา T_confirm = 2.0 วินาที&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="240" y="140" width="350" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_d1" value="&lt;b&gt;ลุกขึ้นยืนเองได้&lt;br&gt;ก่อนครบ 2.0 วินาที?&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ความสูง &amp;gt; 1.0 m&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="260" y="225" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f_clear" value="&lt;b&gt;ตัดสัญญาณเตือนหลอก (False Alarm)&lt;/b&gt;&lt;br&gt;&lt;font color='#166534' size='1'&gt;ยกเลิกการนับเวลา / สลับคืน OCCUPIED&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="30" y="235" width="180" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_alert" value="&lt;b&gt;ยืนยันการล้มฉุกเฉิน (CONFIRMED_FALL)&lt;/b&gt;&lt;br&gt;&lt;font color='#B91C1C' size='1'&gt;เปิดไซเรน 85 dB | ส่ง MQTT &amp;amp; ยิง LINE Flex Message&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#DC2626;strokeWidth=2;fontFamily=Sarabun;fontSize=12;fontStyle=1;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="220" y="340" width="390" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="f_rec_mon" value="&lt;b&gt;เฝ้าระวังการช่วยเหลือตนเอง (Recovery Monitoring)&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ตรวจสอบเงื่อนไขการฟื้นตัวหรือการปลดสัญญาณเตือนภัย&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontFamily=Sarabun;fontSize=11;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="240" y="440" width="350" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_d2" value="&lt;b&gt;ยืนตรงต่อเนื่อง &amp;gt;= 2.5s&lt;br&gt;หรือกดปุ่ม Reset?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="260" y="525" width="310" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="f_siren_cont" value="&lt;b&gt;แจ้งเตือนภัยต่อเนื่อง&lt;/b&gt;&lt;br&gt;&lt;font color='#B91C1C' size='1'&gt;รอผู้ดูแลเข้าช่วยเหลือ&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#DC2626;strokeWidth=1.8;fontFamily=Sarabun;fontSize=12;fontStyle=1;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="620" y="535" width="160" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="f_rec_done" value="&lt;b&gt;ปลดสัญญาณเตือนภัยและฟื้นตัว (Auto Recovery)&lt;/b&gt;&lt;br&gt;&lt;font color='#15803D' size='1'&gt;ปิดไซเรน | ส่ง Event ปลดเตือนภัยขึ้นระบบคลาวด์&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=2;fontFamily=Sarabun;fontSize=12;fontStyle=1;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="230" y="640" width="370" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="efd1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_start" target="f_timer" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_timer" target="f_d1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd3" value="ลุกยืนได้" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_d1" target="f_clear" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd4" value="ไม่ลุกขึ้น (&amp;gt;= 2s)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_d1" target="f_alert" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_alert" target="f_rec_mon" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_rec_mon" target="f_d2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd7" value="ยังไม่ลุก" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_d2" target="f_siren_cont" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="efd8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_siren_cont" target="f_alert" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="372" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="efd9" value="ลุกยืนแล้ว" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="f_d2" target="f_rec_done" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_3_7" name="3.7 Database ERD">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tbl_users" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#3B82F6;strokeWidth=2;fontFamily=Sarabun;fontSize=13;verticalAlign=top;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="60" y="70" width="250" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_h" value="&lt;b&gt;users&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#EFF6FF;strokeColor=#3B82F6;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontColor=#0F172A;align=center;" vertex="1" parent="tbl_users">
+          <mxGeometry x="0" y="0" width="250" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r0" value="id : BIGSERIAL (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#D97706;fontStyle=1;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="34" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r1" value="email : VARCHAR(255) UNIQUE" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="56" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r2" value="password_hash : VARCHAR(255)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="78" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r3" value="full_name : VARCHAR(100)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="100" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r4" value="role : VARCHAR(20) [admin, user]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="122" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r5" value="created_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="144" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_users_r6" value="updated_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_users">
+          <mxGeometry x="6" y="166" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#16A34A;strokeWidth=2;fontFamily=Sarabun;fontSize=13;verticalAlign=top;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="360" y="70" width="250" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_h" value="&lt;b&gt;device_groups&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontColor=#0F172A;align=center;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="0" y="0" width="250" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r0" value="id : BIGSERIAL (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#D97706;fontStyle=1;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="34" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r1" value="user_id : BIGINT (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="56" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r2" value="group_name : VARCHAR(100)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="78" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r3" value="building : VARCHAR(50)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="100" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r4" value="floor : VARCHAR(20)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="122" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r5" value="description : TEXT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="144" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_groups_r6" value="created_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_groups">
+          <mxGeometry x="6" y="166" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#D97706;strokeWidth=2;fontFamily=Sarabun;fontSize=13;verticalAlign=top;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="660" y="70" width="270" height="232" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_h" value="&lt;b&gt;devices&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontColor=#0F172A;align=center;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="0" y="0" width="270" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r0" value="id : BIGSERIAL (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#D97706;fontStyle=1;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="34" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r1" value="group_id : BIGINT (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="56" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r2" value="device_code : VARCHAR(50) UNIQUE" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="78" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r3" value="device_name : VARCHAR(100)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="100" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r4" value="radar_mounting_height : FLOAT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="122" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r5" value="fall_threshold : FLOAT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="144" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r6" value="radar_sensitivity : INT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="166" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r7" value="status : VARCHAR(20)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="188" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_devices_r8" value="last_seen_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_devices">
+          <mxGeometry x="6" y="210" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#8B5CF6;strokeWidth=2;fontFamily=Sarabun;fontSize=13;verticalAlign=top;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="60" y="350" width="250" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_h" value="&lt;b&gt;webhooks&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FAF5FF;strokeColor=#8B5CF6;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontColor=#0F172A;align=center;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="0" y="0" width="250" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r0" value="id : BIGSERIAL (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#D97706;fontStyle=1;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="34" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r1" value="user_id : BIGINT (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="56" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r2" value="device_id : BIGINT (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="78" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r3" value="channel_access_token : TEXT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="100" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r4" value="target_line_id : VARCHAR(100)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="122" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r5" value="is_active : BOOLEAN" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="144" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_webhooks_r6" value="created_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_webhooks">
+          <mxGeometry x="6" y="166" width="238" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FFFFFF;strokeColor=#DC2626;strokeWidth=2;fontFamily=Sarabun;fontSize=13;verticalAlign=top;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="660" y="350" width="270" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_h" value="&lt;b&gt;events&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#FEF2F2;strokeColor=#DC2626;strokeWidth=1.5;fontFamily=Sarabun;fontSize=13;fontColor=#0F172A;align=center;" vertex="1" parent="tbl_events">
+          <mxGeometry x="0" y="0" width="270" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r0" value="id : BIGSERIAL (PK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#D97706;fontStyle=1;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="34" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r1" value="device_id : BIGINT (FK)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#2563EB;fontStyle=1;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="56" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r2" value="event_type : VARCHAR(30)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="78" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r3" value="target_distance : FLOAT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="100" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r4" value="target_velocity : FLOAT" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="122" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r5" value="raw_payload : JSONB" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="144" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_events_r6" value="created_at : TIMESTAMP WITH TZ" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontFamily=Sarabun;fontSize=11;fontColor=#334155;" vertex="1" parent="tbl_events">
+          <mxGeometry x="6" y="166" width="258" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="erd_u_g" value="1 : N (user_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontStyle=1;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.3191;exitDx=0;exitDy=0;entryX=0;entryY=0.3191;entryDx=0;entryDy=0;" edge="1" source="tbl_users" target="tbl_groups" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="erd_g_d" value="1 : N (group_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontStyle=1;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.3191;exitDx=0;exitDy=0;entryX=0;entryY=0.2586;entryDx=0;entryDy=0;" edge="1" source="tbl_groups" target="tbl_devices" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="erd_u_w" value="1 : N (user_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontStyle=1;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="tbl_users" target="tbl_webhooks" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="erd_d_e" value="1 : N (device_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontStyle=1;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="tbl_devices" target="tbl_events" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="fig_4_2" name="4.2 Firmware Flowchart">
+    <mxGraphModel dx="1100" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="node_start" value="เริ่มต้นระบบ (System Start)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#F1F5F9;strokeColor=#475569;strokeWidth=2;fontStyle=1;fontSize=13;fontFamily=Sarabun;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="290" y="40" width="220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="node_init" value="&lt;b&gt;กำหนดค่าเริ่มต้นฮาร์ดแวร์และเครือข่าย&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;GPIO, Wi-Fi Station, MQTT Broker, UART 115200&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFFFF;strokeColor=#64748B;strokeWidth=1.8;fontSize=12;fontFamily=Sarabun;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="240" y="110" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="node_d1" value="&lt;b&gt;ตรวจพบบุคคลในห้องน้ำ?&lt;/b&gt;&lt;br&gt;&lt;font color='#2563EB' size='1'&gt;LD2410 GPIO 16 == HIGH&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="260" y="190" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="node_idle" value="สถานะห้องว่าง (IDLE)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.8;fontStyle=1;fontSize=12;fontFamily=Sarabun;fontColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="50" y="195" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="node_occ" value="&lt;b&gt;สถานะมีผู้ใช้งานห้องน้ำ (OCCUPIED)&lt;/b&gt;&lt;br&gt;&lt;font color='#0284C7' size='1'&gt;เปิดไฟสถานะ / ถอดรหัสแพ็กเก็ตเรดาร์ 60 GHz ต่อเนื่อง&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0F9FF;strokeColor=#0284C7;strokeWidth=2;fontStyle=1;fontSize=12;fontFamily=Sarabun;fontColor=#0369A1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="290" width="320" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="node_d2" value="&lt;b&gt;เรดาร์ 60 GHz ตรวจพบการล้ม?&lt;/b&gt;&lt;br&gt;&lt;font color='#2563EB' size='1'&gt;Frame Type 0x0E02&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="260" y="375" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="node_susp" value="&lt;b&gt;สงสัยว่าหกล้ม (SUSPECTED_FALL)&lt;/b&gt;&lt;br&gt;&lt;font color='#92400E' size='1'&gt;เริ่มนับเวลาหน่วงตรวจสอบ: T_delay = 2.0 วินาที&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=2;fontStyle=1;fontSize=12;fontFamily=Sarabun;fontColor=#B45309;" vertex="1" parent="1">
+          <mxGeometry x="230" y="475" width="340" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="node_d3" value="&lt;b&gt;ลุกขึ้นยืนเองได้ก่อน 2.0 วินาที?&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ระดับความสูง &amp;gt; 1.0 m&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="250" y="560" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="node_clear" value="&lt;b&gt;ตัดสัญญาณเตือนหลอก&lt;/b&gt;&lt;br&gt;&lt;font color='#166534' size='1'&gt;False Alarm Filtered&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=1.8;fontStyle=1;fontSize=12;fontFamily=Sarabun;fontColor=#15803D;" vertex="1" parent="1">
+          <mxGeometry x="50" y="565" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="node_alert" value="&lt;b&gt;ยืนยันการล้มฉุกเฉิน (CONFIRMED_FALL)&lt;/b&gt;&lt;br&gt;&lt;font color='#7F1D1D' size='1'&gt;เปิดไซเรน 85 dB | ส่ง MQTT Publish &amp;amp; LINE Flex Message&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FEF2F2;strokeColor=#DC2626;strokeWidth=2;fontStyle=1;fontSize=12;fontFamily=Sarabun;fontColor=#B91C1C;" vertex="1" parent="1">
+          <mxGeometry x="215" y="660" width="370" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="node_d4" value="&lt;b&gt;ปลดสัญญาณเตือนภัย (Reset)?&lt;/b&gt;&lt;br&gt;&lt;font color='#64748B' size='1'&gt;ปุ่มกด / แดชบอร์ด / ลุกขึ้นยืน 2.5s&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=12;fontStyle=1;fontFamily=Sarabun;fontColor=#1E40AF;" vertex="1" parent="1">
+          <mxGeometry x="260" y="750" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_start" target="node_init" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_init" target="node_d1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="ไม่ใช่" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.8;strokeDasharray=6 4;fontSize=11;fontStyle=1;fontColor=#64748B;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d1" target="node_idle" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.8;strokeDasharray=6 4;fontSize=11;fontStyle=1;fontColor=#64748B;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_idle" target="node_d1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="175" />
+              <mxPoint x="400" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="ใช่" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d1" target="node_occ" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_occ" target="node_d2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="ไม่ใช่" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.8;strokeDasharray=6 4;fontSize=11;fontStyle=1;fontColor=#64748B;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d2" target="node_occ" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="410" />
+              <mxPoint x="600" y="317" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="ตรวจพบ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d2" target="node_susp" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_susp" target="node_d3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="ลุกขึ้น" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d3" target="node_clear" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_clear" target="node_occ" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="317" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="ไม่ลุก" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d3" target="node_alert" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.8;fontSize=11;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_alert" target="node_d4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="เตือนต่อ" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#DC2626;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d4" target="node_alert" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="785" />
+              <mxPoint x="600" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="รีเซ็ตแล้ว" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#059669;fontFamily=Sarabun;labelBackgroundColor=#FFFFFF;" edge="1" source="node_d4" target="node_idle" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="20" y="785" />
+              <mxPoint x="20" y="225" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

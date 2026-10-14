@@ -10,8 +10,6 @@ import (
 // ฟังก์ชันกลางสำหรับกระจายข่าว
 func SendSimpleNotification(notifType, target, message string) {
 	switch notifType {
-	case "discord":
-		sendDiscord(target, message)
 	case "webhook":
 		sendWebhook(target, message)
 	}
@@ -26,12 +24,6 @@ func SendLineNotification(notifType, target, GroupID, message string) {
 
 func sendWebhook(url, msg string) {
 	payload := map[string]string{"event": "fall_detected", "message": msg}
-	body, _ := json.Marshal(payload)
-	http.Post(url, "application/json", bytes.NewBuffer(body))
-}
-
-func sendDiscord(url, msg string) {
-	payload := map[string]string{"content": msg}
 	body, _ := json.Marshal(payload)
 	http.Post(url, "application/json", bytes.NewBuffer(body))
 }

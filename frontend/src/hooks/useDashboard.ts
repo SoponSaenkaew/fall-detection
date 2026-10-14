@@ -51,11 +51,34 @@ export const useDashboard = () => {
   const handleUpdateDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showEditDev.originalId) return;
+
+    const trimmedId = editDevData.device_id.trim();
+    if (!trimmedId) {
+      alert("กรุณาระบุรหัสอุปกรณ์");
+      return;
+    }
+
+    // ตรวจสอบเบื้องต้นว่า Device ID ใหม่ซ้ำกับอุปกรณ์อื่นที่อยู่ในระบบหรือไม่
+    if (trimmedId.toLowerCase() !== showEditDev.originalId.toLowerCase()) {
+      const isDuplicate = groups.some((g: any) =>
+        g.devices?.some((d: any) => 
+          d.device_id?.toLowerCase() === trimmedId.toLowerCase() && 
+          d.device_id?.toLowerCase() !== showEditDev.originalId?.toLowerCase()
+        )
+      );
+      if (isDuplicate) {
+        alert(`รหัสอุปกรณ์ '${trimmedId}' มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`);
+        return;
+      }
+    }
+
     try {
-      await deviceService.update(showEditDev.originalId, editDevData);
+      await deviceService.update(showEditDev.originalId, { ...editDevData, device_id: trimmedId });
       setShowEditDev({ show: false, originalId: null });
       fetchData();
-    } catch (err) { alert("อัปเดตข้อมูลเซนเซอร์ไม่สำเร็จค่ะ"); }
+    } catch (err: any) { 
+      alert(err.response?.data?.error || "อัปเดตข้อมูลเซนเซอร์ไม่สำเร็จค่ะ"); 
+    }
   };
 
   const handleAddGroup = async (e: React.FormEvent) => {
@@ -78,12 +101,29 @@ export const useDashboard = () => {
 
   const handleAddDevice = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedId = newDev.device_id.trim();
+    if (!trimmedId) {
+      alert("กรุณาระบุรหัสอุปกรณ์");
+      return;
+    }
+
+    // ตรวจสอบเบื้องต้นว่า Device ID ซ้ำกับอุปกรณ์ที่มีอยู่แล้วในระบบหรือไม่
+    const isDuplicate = groups.some((g: any) =>
+      g.devices?.some((d: any) => d.device_id?.toLowerCase() === trimmedId.toLowerCase())
+    );
+    if (isDuplicate) {
+      alert(`รหัสอุปกรณ์ '${trimmedId}' มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`);
+      return;
+    }
+
     try {
-      await deviceService.create({ ...newDev, group_id: showAddDevModal.groupId });
+      await deviceService.create({ ...newDev, device_id: trimmedId, group_id: showAddDevModal.groupId });
       setNewDev({ device_id: "", name: "" });
       setShowAddDevModal({ show: false, groupId: null });
       fetchData();
-    } catch (err) { alert("ลงทะเบียนไม่สำเร็จ"); }
+    } catch (err: any) { 
+      alert(err.response?.data?.error || "ลงทะเบียนไม่สำเร็จ"); 
+    }
   };
 
   const handleDeleteDevice = async (deviceId: string) => {
@@ -97,8 +137,8 @@ export const useDashboard = () => {
   const handleSaveNotif = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await notificationService.save({ ...notifForm, group_id: showNotifModal.groupId });
-      alert("บันทึกการตั้งค่าสำเร็จแล้วค่ะ! ✨");
+      await notificationService.save({ ...notifForm, type: 'line', group_id: showNotifModal.groupId });
+      alert("บันทึกการตั้งค่าแจ้งเตือน LINE เรียบร้อยแล้วค่ะ! ✨");
       setShowNotifModal({ show: false, groupId: null });
     } catch (err) { alert("บันทึกไม่สำเร็จค่ะ"); }
   };
@@ -108,30 +148,40 @@ export const useDashboard = () => {
   const handleOpenSettings = async (deviceId: string) => {
     try {
       const res = await deviceService.getSettings(deviceId);
-      setCurrentSettings(res.data);
+      setCurrentSettings({
+        ...res.data,
+        mount_height: res.data?.mount_height || 2.2,
+        room_width: res.data?.room_width || 2.0,
+        room_length: res.data?.room_length || 2.0,
+        stay_timeout_minutes: res.data?.stay_timeout_minutes || 30.0,
+        fall_threshold: res.data?.fall_threshold || 0.5,
+      });
       setShowSettings({ show: true, deviceId });
     } catch (err) {
-      // ถ้ายังไม่มีค่าใน DB ให้ใช้ค่าเริ่มต้นและผูกกับ DeviceID นั้นๆ ค่ะ
+      // ถ้ายังไม่มีค่าใน DB ให้ใช้ค่าแนะนำของระบบ (สูง 2.2ม., กว้าง 2.0ม., ยาว 2.0ม.)
       setCurrentSettings({
         device_id: deviceId,
         stay_timeout_minutes: 30.0,
         fall_threshold: 0.5,
-        mount_height: 2.0,
-        room_width: 4.0,
-        room_length: 4.0
+        mount_height: 2.2,
+        room_width: 2.0,
+        room_length: 2.0
       });
       setShowSettings({ show: true, deviceId });
     }
   };
 
-  // ✨ ฟังก์ชันบันทึกค่าพารามิเตอร์
+  // ฟังก์ชันบันทึกค่าพารามิเตอร์
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await deviceService.updateSettings(currentSettings);
-      alert("บันทึกค่าพารามิเตอร์สำเร็จ");
+      alert("บันทึกค่าพารามิเตอร์ลงตัวเครื่องสำเร็จเรียบร้อย");
       setShowSettings({ show: false, deviceId: "" });
-    } catch (err) { alert("บันทึกไม่สำเร็จ"); }
+      fetchData(); // รีเฟรชข้อมูลเพื่อให้อัปเดตค่าพารามิเตอร์ล่าสุดบนการ์ด
+    } catch (err: any) {
+      alert(err.response?.data?.error || "บันทึกไม่สำเร็จ โปรดตรวจสอบความถูกต้องของข้อมูล");
+    }
   };
 
   useEffect(() => {

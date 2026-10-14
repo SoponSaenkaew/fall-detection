@@ -4,9 +4,9 @@
 #include <Preferences.h>
 
 // ================= USER CONFIGURATION =================
-inline const char* ssid          = "PINKU 8541";
-inline const char* password      = "468Bt9@2";
-inline const char* device_id     = "LD6002C_TEST_01";
+// ค่าเริ่มต้นของอุปกรณ์ (สามารถตั้งค่า Wi-Fi และ Device ID ผ่านหน้า Portal หรือกดปุ่ม BOOT ค้าง 3 วิ เพื่อรีเซ็ตได้)
+inline char device_id[32]        = "LD6002C_TEST_01";
+#define BOOT_BUTTON_PIN 0        // ปุ่ม BOOT บนบอร์ด ESP32-S3 (GPIO 0) สำหรับกดค้าง 3 วินาทีเพื่อรีเซ็ต Wi-Fi
 
 // วิธีส่งข้อมูล: true = MQTT (แนะนำ), false = HTTP POST
 #define USE_MQTT true
@@ -57,9 +57,9 @@ inline bool          prolonged_stay_alerted  = false;
 // ================= RUNTIME STATE & STORAGE =================
 inline String current_event   = "exit";
 inline float  fall_threshold  = 0.5;   // เกณฑ์ความสูงตรวจจับการล้ม
-inline float  mount_height    = 2.0;   // ความสูงติดตั้งเซนเซอร์ (เมตร)
-inline float  room_width      = 4.0;   // ความกว้างห้องน้ำ (เมตร)
-inline float  room_length     = 4.0;   // ความยาวห้องน้ำ (เมตร)
+inline float  mount_height    = 2.2;   // ความสูงติดตั้งเซนเซอร์ (เมตร - แนะนำ 2.2ม.)
+inline float  room_width      = 2.0;   // ความกว้างห้องน้ำ (เมตร - แนะนำ 2.0ม.)
+inline float  room_length     = 2.0;   // ความยาวห้องน้ำ (เมตร - แนะนำ 2.0ม.)
 
 // ================= CROSS-MODULE FORWARD DECLARATIONS =================
 void setRGBColor(uint8_t r, uint8_t g, uint8_t b);
@@ -70,11 +70,16 @@ void resetRadarFallFlags();
 void setRadarFallAlerted(bool alerted);
 void sendConfigToRadar(uint16_t type, float value);
 void sendRoomSizeToRadar(float width, float length);
+void checkResetButton();
+void resetWiFiSettings();
 
 // ================= NVS FLASH MEMORY FUNCTIONS =================
 inline void loadSavedConfig() {
   Preferences preferences;
   preferences.begin("fall-detector", true);
+  String saved_dev_id  = preferences.getString("device_id", device_id);
+  strncpy(device_id, saved_dev_id.c_str(), sizeof(device_id) - 1);
+  device_id[sizeof(device_id) - 1] = '\0';
   fall_threshold       = preferences.getFloat("threshold", fall_threshold);
   mount_height         = preferences.getFloat("height", mount_height);
   room_width           = preferences.getFloat("width", room_width);
@@ -85,11 +90,21 @@ inline void loadSavedConfig() {
   preferences.end();
 
   Serial.println("💾 [SYSTEM] Loaded saved configurations from Flash memory:");
+  Serial.print("   👉 device_id             : "); Serial.println(device_id);
   Serial.print("   👉 fall_threshold       : "); Serial.println(fall_threshold);
   Serial.print("   👉 mount_height          : "); Serial.print(mount_height); Serial.println(" m");
   Serial.print("   👉 room_width            : "); Serial.print(room_width); Serial.println(" m");
   Serial.print("   👉 room_length           : "); Serial.print(room_length); Serial.println(" m");
   Serial.print("   👉 stay_timeout_minutes  : "); Serial.print(stay_timeout_minutes); Serial.println(" min\n");
+}
+
+inline void saveDeviceIDToNVS(const char* new_id) {
+  strncpy(device_id, new_id, sizeof(device_id) - 1);
+  device_id[sizeof(device_id) - 1] = '\0';
+  Preferences preferences;
+  preferences.begin("fall-detector", false);
+  preferences.putString("device_id", device_id);
+  preferences.end();
 }
 
 inline void saveConfigToNVS(float threshold, float height, float width, float length, float stay_timeout = -1.0) {
